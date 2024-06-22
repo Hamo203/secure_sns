@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../model/account.dart';
 import '../../model/post.dart';
+import 'package:like_button/like_button.dart';
 
 class Timeline extends StatefulWidget {
   const Timeline({super.key});
@@ -26,11 +27,19 @@ class _TimelineState extends State<Timeline> {
     createdTime :DateTime.now(),
     postAccount:'1',
     buttonPush: false,
-  )];
+  ),
+    Post(
+      id:'2',
+      discription :'腰が疲れた',
+      createdTime :DateTime.now(),
+      postAccount:'1',
+      buttonPush: false,
+    )];
 
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       appBar: AppBar(
         title: Text("タイムライン"),
@@ -53,32 +62,25 @@ class _TimelineState extends State<Timeline> {
                         ]
                       ),
                       Image.asset('images/testcat.jpg'),
-                      ElevatedButton(
-                          onPressed: (){
-                            setState((){
-
-                              postlist[index].buttonPush = !(postlist[index].buttonPush);
-                              print(postlist[index].buttonPush);
-                            });
-                          },
-                          child: Text(""),
-                            style: ElevatedButton.styleFrom(
-                            shape: StadiumBorder(),
-                              backgroundColor: postlist[index].buttonPush ? Colors.white : Colors.red, // ボタンの背景色を動的に変更
-
-                          ),
-                      ),
+                      LikeButton(
+                          size: 40,
+                          likeCount: 0,
+                          isLiked: postlist[index].buttonPush),
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 20,vertical: 5),
                           child: Column(
                             children: [
+                              Text(DateFormat('yyyy/M/dd h:mm').format(postlist[index].createdTime!)),
                               Text(postlist[index].discription,),
-                              Text(DateFormat('yyyy/M/dd h:m').format(postlist[index].createdTime!)),
-                            ],
-                          )),
 
-                    ]
+                            ],
+                          )
+                      ),
+                      SizedBox(height: 10,)
+                    ],
+
                   ),
+
 
 
               );
