@@ -37,9 +37,13 @@ class _PostpageState extends State<Postpage> {
         title: Text("新規投稿"),
         actions: <Widget>[
           IconButton(
-              onPressed: (){},
+              onPressed: (
+                  ){},
               icon: Image.asset('images/OIP.jpg'),
-          )
+          ),
+          TextButton(
+              onPressed: (){},
+              child:Text("シェア！"))
         ],
       ),
       body: SingleChildScrollView(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:secure_sns/view/timeline/postpage.dart';
 import 'package:secure_sns/view/timeline/timeline.dart';
 
+import 'navigation.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -19,7 +21,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: Postpage()
+      home: Navigation()
     );
   }
 }
