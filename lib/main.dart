@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:secure_sns/view/account/accountpage.dart';
 import 'package:secure_sns/view/timeline/postpage.dart';
 import 'package:secure_sns/view/timeline/timeline.dart';
 

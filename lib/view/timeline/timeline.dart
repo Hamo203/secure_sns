@@ -53,13 +53,27 @@ class _TimelineState extends State<Timeline> {
                   child:Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children:[
-                          CircleAvatar(
-                            radius:30,
-                          ),
-                          Text(account.name),
-                        ]
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children:[
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius:30
+                                ),
+                                Text(account.name),
+                              ],
+
+                            ),
+                            OutlinedButton(
+                                onPressed: (){},
+                                child: Text("フォロー"),
+                            )
+
+                          ]
+                        ),
                       ),
                       Image.asset('images/testcat.jpg'),
                       LikeButton(
