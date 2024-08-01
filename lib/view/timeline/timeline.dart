@@ -17,23 +17,27 @@ class _TimelineState extends State<Timeline> {
   Account account =new Account(
       username:'hamo235',
       name: 'hamo',
-      id:'1',
+      userid:'1',
       createdDate:DateTime.now()
   );
 
   List<Post> postlist=[Post(
-    id:'1',
-    discription :'目が疲れた',
+    postid:'1',
+    description :'目が疲れた',
     createdTime :DateTime.now(),
     postAccount:'1',
     buttonPush: false,
+    favoriteCount: 0,
+    retweetCount: 0
   ),
     Post(
-      id:'2',
-      discription :'腰が疲れた',
+      postid:'2',
+      description :'腰が疲れた',
       createdTime :DateTime.now(),
       postAccount:'1',
       buttonPush: false,
+        favoriteCount: 0,
+        retweetCount: 0
     )];
 
 
@@ -85,7 +89,7 @@ class _TimelineState extends State<Timeline> {
                           child: Column(
                             children: [
                               Text(DateFormat('yyyy/M/dd h:mm').format(postlist[index].createdTime!)),
-                              Text(postlist[index].discription,),
+                              Text(postlist[index].description,),
 
                             ],
                           )

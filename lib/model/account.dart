@@ -1,10 +1,14 @@
 class Account{
+  String userid;
+
   String username;
   String name;
-  String id;
+  String? bio;
   DateTime? createdDate;
-  String photo_url;
+  DateTime? birthday;
+  String profilePhotoUrl;
   List? followers;
-  Account({this.username='',this.name='',this.id='', this.createdDate,this.photo_url="",this.followers} );
+  List? retweets;
+  Account({this.username='',this.name='',this.bio,this.userid='', this.createdDate,this.birthday,this.profilePhotoUrl="",this.followers,this.retweets} );
 
 }

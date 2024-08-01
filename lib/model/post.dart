@@ -1,14 +1,20 @@
 class Post {
-  String id;
-  String discription;
-  DateTime? createdTime;
+  String postid;
+
   String postAccount;
+  String description;
+  String? imagePath;
+  DateTime createdTime;
   bool buttonPush;
+  int favoriteCount;
+  int retweetCount;
   Post(
-      {this.id = '',
-        this.discription = '',
+      {this.postid = '',
+        this.description = '',
         this.postAccount = '',
-        this.createdTime,
+        required this.createdTime,
         this.buttonPush=false,
+        this.favoriteCount=0,
+        this.retweetCount=0
       });
 }
