@@ -1,28 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:secure_sns/view/startup/registerpage.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
-class Login extends StatefulWidget {
-  const Login({super.key});
+import '../account/user_auth.dart';
+
+class Registerpage2 extends StatefulWidget {
+  const Registerpage2({super.key});
 
   @override
-  State<Login> createState() => _LoginState();
+  State<Registerpage2> createState() => _Registerpage2State();
 }
 
-class _LoginState extends State<Login> {
+class _Registerpage2State extends State<Registerpage2> {
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
-
     final GlobalKey<FormState> _formKey= GlobalKey<FormState>();
     String email="";
     String password="";
 
-    void _RegisterPage(){
-      print("Registerへ");
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => Registerpage()));
-
+    Future<void> _createUser(BuildContext context,String email,String password) async{
+      try{
+        await userAuth.createUserWithEmailAndPassword(email: email, password: password);
+      }catch(e){
+        print(e);
+        Fluttertoast.showToast(msg: "Firebaseの登録に失敗しました");
+      }
     }
 
     return Scaffold(
@@ -67,7 +70,7 @@ class _LoginState extends State<Login> {
                         left: screenWidth * 0.2, // 画面幅の20%
                         top: screenHeight * 0.25, // 画面高さの20%
                         child: Text(
-                          'おかえりなさい！',
+                          'こんにちは！',
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: screenWidth * 0.08,
@@ -167,63 +170,51 @@ class _LoginState extends State<Login> {
                       Positioned(
                         left: screenWidth * 0.3,
                         top: screenHeight * 0.63,
-                        child: Container(
-                          width: screenWidth * 0.7, // 画面幅の70%
-                          height: screenHeight * 0.07, // 画面高さの7%
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                left: 0,
-                                top: 0,
-                                child: TextButton(
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: Color(0xFFF6CBD1),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
+                        child: GestureDetector(
+                          onTap: ()async{
+                            if(_formKey.currentState!.validate()){
+                              _formKey.currentState!.save();
+                              await _createUser(context, email, password);
+                            }
+                            //Navigator.pushNamedAndRemoveUntil(context, "/list", (_)=> false);
+                          },
+                          child: Container(
+                            width: screenWidth * 0.7, // 画面幅の70%
+                            height: screenHeight * 0.07, // 画面高さの7%
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                  left: 0,
+                                  top: 0,
+                                  child: TextButton(
+                                    style: TextButton.styleFrom(
+                                      backgroundColor: Color(0xFFF6CBD1),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      minimumSize: Size(screenWidth * 0.4, screenHeight * 0.07), // 画面幅の70%, 画面高さの7%
                                     ),
-                                    minimumSize: Size(screenWidth * 0.4, screenHeight * 0.07), // 画面幅の40%, 画面高さの7%
-                                  ),
-                                  onPressed: () {
-                                    // ボタンが押されたときの処理
-                                  },
-                                  child: Center(
-                                    child: Text(
-                                      'ログイン',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontFamily: 'Inter',
-                                        fontWeight: FontWeight.w400,
-                                        height: 0,
+                                    onPressed: () {
+                                      // ボタンが押されたときの処理
+                                    },
+                                    child: Center(
+                                      child: Text(
+                                        '登録',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontFamily: 'Inter',
+                                          fontWeight: FontWeight.w400,
+                                          height: 0,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      Positioned(
-                        left: screenWidth * 0.28, // 画面幅の25%
-                        top: screenHeight * 0.77, // 画面高さの87%
-                        child: GestureDetector(
-                          onTap: _RegisterPage,
-                          child: SizedBox(
-                            width: screenWidth * 0.5, // 画面幅の50%
-                            height: screenHeight * 0.03, // 画面高さの3%
-                            child: Text(
-                              '新規登録の場合はこちら',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: screenWidth * 0.04, // 画面幅の3%
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w400,
-                                height: 1,
-                              ),
+                              ],
                             ),
                           ),
+
                         ),
                       ),
                     ],
@@ -236,5 +227,3 @@ class _LoginState extends State<Login> {
     );
   }
 }
-
-
