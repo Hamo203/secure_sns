@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:secure_sns/view/startup/login.dart';
+import 'package:secure_sns/view/startup/registerpage2.dart';
 
 class Registerpage extends StatefulWidget {
   const Registerpage({super.key});
@@ -16,6 +18,9 @@ class _RegisterpageState extends State<Registerpage> {
     void _registerWithEmail() {
       // メールアドレスで登録のロジックをここに追加
       print("メールアドレスで登録");
+      Navigator.push(
+          context, MaterialPageRoute(builder: (context) => Registerpage2()));
+
     }
     void _registerWithGoogle() {
       // メールアドレスで登録のロジックをここに追加
@@ -32,6 +37,8 @@ class _RegisterpageState extends State<Registerpage> {
 
     void _loginPage(){
       print("Loginへ");
+      Navigator.push(
+          context, MaterialPageRoute(builder: (context) => Login()));
     }
 
     return Scaffold(
@@ -99,26 +106,26 @@ class _RegisterpageState extends State<Registerpage> {
                     //メアドで登録
                     left: screenWidth * 0.15, // 画面幅の15%
                     top: screenHeight * 0.37, // 画面高さの37%
-                    child: GestureDetector(
-                      onTap: _registerWithEmail,
-                      child: Container(
-                        width: screenWidth * 0.7, // 画面幅の70%
-                        height: screenHeight * 0.07, // 画面高さの7%
-                        decoration: ShapeDecoration(
-                          color: Color(0xFFF2D3B5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                          backgroundColor:Color(0xFFF2D3B5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        child: Center(
-                          child: Text(
-                            'メールアドレスで登録',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: screenWidth * 0.04, // 画面幅の3%
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                            ),
+                        minimumSize: Size(screenWidth * 0.7, screenHeight * 0.07),
+                      ),
+                      onPressed: (){
+                        print("メールアドレス登録");
+                        _registerWithEmail();
+                      },
+                      child: Center(
+                        child: Text(
+                          'メールアドレスで登録',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: screenWidth * 0.04, // 画面幅の3%
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ),
@@ -127,30 +134,26 @@ class _RegisterpageState extends State<Registerpage> {
                   Positioned(
                     left: screenWidth * 0.15, // 画面幅の15%
                     top: screenHeight * 0.5, // 画面高さの50%
-                    child: GestureDetector(
-                      onTap: _registerWithGoogle,
-                      child: Container(
-                        width: screenWidth * 0.7, // 画面幅の70%
-                        height: screenHeight * 0.07, // 画面高さの7%
-                        decoration: ShapeDecoration(
-                          color: Color(0xFFF7F7F7),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor:Color(0xFFF7F7F7),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        minimumSize: Size(screenWidth * 0.7, screenHeight * 0.07),
+                      ),
+                      onPressed: _registerWithGoogle,
+                      child: Center(
+                        child: Text(
+                          'Google で登録',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: screenWidth * 0.04, // 画面幅の3%
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w400,
+                            height: 1,
                           ),
                         ),
-                        child: Center(
-                          child: Text(
-                            'Google で登録',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: screenWidth * 0.04, // 画面幅の3%
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                              height: 1,
-                            ),
-                          ),
-                        ),
-
                       ),
                     ),
                   ),
@@ -158,27 +161,24 @@ class _RegisterpageState extends State<Registerpage> {
                     //Twitterで登録
                     left: screenWidth * 0.15, // 画面幅の15%
                     top: screenHeight * 0.62, // 画面高さの62%
-                    child: GestureDetector(
-                      onTap: _registerWithTwitter,
-                      child: Container(
-                        width: screenWidth * 0.7, // 画面幅の70%
-                        height: screenHeight * 0.07, // 画面高さの7%
-                        decoration: ShapeDecoration(
-                          color: Color(0xFFC5D8E7),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor:Color(0xFFC5D8E7),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        child:Center(
-                          child: Text(
-                            'Twitter で登録',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: screenWidth * 0.04, // 画面幅の3%
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                              height: 1,
-                            ),
+                        minimumSize: Size(screenWidth * 0.7, screenHeight * 0.07),
+                      ),
+                      onPressed: _registerWithTwitter,
+                      child: Center(
+                        child: Text(
+                          'Twitter で登録',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: screenWidth * 0.04, // 画面幅の3%
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w400,
+                            height: 1,
                           ),
                         ),
                       ),
@@ -187,27 +187,24 @@ class _RegisterpageState extends State<Registerpage> {
                   Positioned(
                     left: screenWidth * 0.15, // 画面幅の15%
                     top: screenHeight * 0.74, // 画面高さの74%
-                    child: GestureDetector(
-                      onTap: _registerWithGithub,
-                      child: Container(
-                        width: screenWidth * 0.7, // 画面幅の70%
-                        height: screenHeight * 0.07, // 画面高さの7%
-                        decoration: ShapeDecoration(
-                          color: Color(0xFFA5BACF),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor:Color(0xFFA5BACF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        child: Center(
-                          child: Text(
-                            'Github で登録',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: screenWidth * 0.04, // 画面幅の3%
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                              height: 1,
-                            ),
+                        minimumSize: Size(screenWidth * 0.7, screenHeight * 0.07),
+                      ),
+                      onPressed: _registerWithGithub,
+                      child: Center(
+                        child: Text(
+                          'Github で登録',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: screenWidth * 0.04, // 画面幅の3%
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w400,
+                            height: 1,
                           ),
                         ),
                       ),

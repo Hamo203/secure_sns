@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import '../../navigation.dart';
 import '../account/user_auth.dart';
 
 class Registerpage2 extends StatefulWidget {
@@ -11,25 +12,30 @@ class Registerpage2 extends StatefulWidget {
 }
 
 class _Registerpage2State extends State<Registerpage2> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  String email = "";
+  String password = "";
+  TextEditingController _emailController = TextEditingController();
+  TextEditingController _passwordController = TextEditingController();
+
+  Future<void> _createUser(BuildContext context, String email, String password) async {
+    try {
+      await userAuth.createUserWithEmailAndPassword(email: email, password: password);
+      Navigator.push(
+          context, MaterialPageRoute(builder: (context) => Navigation()));
+    } catch (e) {
+      print(e);
+      Fluttertoast.showToast(msg: "Firebaseの登録に失敗しました");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
-    final GlobalKey<FormState> _formKey= GlobalKey<FormState>();
-    String email="";
-    String password="";
-
-    Future<void> _createUser(BuildContext context,String email,String password) async{
-      try{
-        await userAuth.createUserWithEmailAndPassword(email: email, password: password);
-      }catch(e){
-        print(e);
-        Fluttertoast.showToast(msg: "Firebaseの登録に失敗しました");
-      }
-    }
 
     return Scaffold(
-        body:SingleChildScrollView(
+        body: SingleChildScrollView(
           child: Center(
             child: Column(
               children: [
@@ -68,9 +74,9 @@ class _Registerpage2State extends State<Registerpage2> {
                       ),
                       Positioned(
                         left: screenWidth * 0.2, // 画面幅の20%
-                        top: screenHeight * 0.25, // 画面高さの20%
+                        top: screenHeight * 0.25, // 画面高さの25%
                         child: Text(
-                          'こんにちは！',
+                          'はじめまして！',
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: screenWidth * 0.08,
@@ -81,140 +87,170 @@ class _Registerpage2State extends State<Registerpage2> {
                         ),
                       ),
                       Positioned(
-                        //メアド入力
                         left: screenWidth * 0.15, // 画面幅の15%
                         top: screenHeight * 0.37, // 画面高さの37%
                         child: Container(
                           width: screenWidth * 0.7, // 画面幅の70%
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'メールアドレスを入力',
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide(
-                                  color: Color(0xFFF9E4C8),
-                                  width: 3,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide(
-                                  color: Color(0xFFF9E4C8),
-                                  width: 3,
-                                ),
-                              ),
-                            ),
-                            onSaved: (String? value){
-                              email=value!;
-                            },
-                            validator: (value){
-                              if(value!.isEmpty){
-                                return 'メールアドレスは必須項目です';
-                              }else {
-                                return null;
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: screenWidth * 0.15, // 画面幅の15%
-                        top: screenHeight * 0.5, // 画面高さの50%
-                        child: Container(
-                          width: screenWidth * 0.7, // 画面幅の70%
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'パスワードを入力',
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide(
-                                  color: Color(0xFFC5D8E7),
-                                  width: 3,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide(
-                                  color: Color(0xFFC5D8E7),
-                                  width: 3,
-                                ),
-                              ),
-                            ),
-                            onSaved: (String? value){
-                              password=value!;
-                            },
-                            validator: (value){
-                              if(value!.isEmpty){
-                                return 'パスワードは必須項目です';
-                              }else if(value.length<6){
-                                return 'パスワードは6桁以上です';
-                              } else {
-                                return null;
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: screenWidth * 0.3,
-                        top: screenHeight * 0.63,
-                        child: GestureDetector(
-                          onTap: ()async{
-                            if(_formKey.currentState!.validate()){
-                              _formKey.currentState!.save();
-                              await _createUser(context, email, password);
-                            }
-                            //Navigator.pushNamedAndRemoveUntil(context, "/list", (_)=> false);
-                          },
-                          child: Container(
-                            width: screenWidth * 0.7, // 画面幅の70%
-                            height: screenHeight * 0.07, // 画面高さの7%
-                            child: Stack(
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
                               children: [
-                                Positioned(
-                                  left: 0,
-                                  top: 0,
-                                  child: TextButton(
-                                    style: TextButton.styleFrom(
-                                      backgroundColor: Color(0xFFF6CBD1),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(15),
-                                      ),
-                                      minimumSize: Size(screenWidth * 0.4, screenHeight * 0.07), // 画面幅の70%, 画面高さの7%
+                                TextFormField(
+                                  controller: _emailController,
+                                  decoration: InputDecoration(
+                                    labelText: 'メールアドレスを入力',
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide.none,
                                     ),
-                                    onPressed: () {
-                                      // ボタンが押されたときの処理
-                                    },
-                                    child: Center(
-                                      child: Text(
-                                        '登録',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontFamily: 'Inter',
-                                          fontWeight: FontWeight.w400,
-                                          height: 0,
-                                        ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                        color: Color(0xFFF9E4C8),
+                                        width: 3,
                                       ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                        color: Color(0xFFF9E4C8),
+                                        width: 3,
+                                      ),
+                                    ),
+                                    errorBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                        color: Colors.red,
+                                        width: 3,
+                                      ),
+                                    ),
+                                    focusedErrorBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                        color: Colors.red,
+                                        width: 3,
+                                      ),
+                                    ),
+                                  ),
+                                  onSaved: (String? value) {
+                                    email = value!;
+                                  },
+                                  validator: (value) {
+                                    if (value!.isEmpty) {
+                                      return 'メールアドレスは必須項目です';
+                                    } else if (value.length < 6) {
+                                      return 'メールアドレスが短すぎます';
+                                    } else {
+                                      return null;
+                                    }
+                                  },
+                                ),
+                                SizedBox(height: screenHeight * 0.05),
+                                TextFormField(
+                                  controller: _passwordController,
+                                  decoration: InputDecoration(
+                                    labelText: 'パスワードを入力',
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                        color: Color(0xFFC5D8E7),
+                                        width: 3,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                        color: Color(0xFFC5D8E7),
+                                        width: 3,
+                                      ),
+                                    ),
+                                    errorBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                        color: Colors.red,
+                                        width: 3,
+                                      ),
+                                    ),
+                                    focusedErrorBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                        color: Colors.red,
+                                        width: 3,
+                                      ),
+                                    ),
+                                  ),
+                                  onSaved: (String? value) {
+                                    password = value!;
+                                  },
+                                  validator: (value) {
+                                    if (value!.isEmpty) {
+                                      return 'パスワードは必須項目です';
+                                    } else if (value.length < 6) {
+                                      return 'パスワードは6桁以上です';
+                                    } else {
+                                      return null;
+                                    }
+                                  },
+                                ),
+                                SizedBox(height: screenHeight * 0.05),
+                                GestureDetector(
+                                  onTap: () async {
+                                    if (_formKey.currentState!.validate()) {
+                                      _formKey.currentState!.save();
+                                      await _createUser(context, email, password);
+                                    }
+                                  },
+                                  child: Container(
+                                    width: screenWidth * 0.7, // 画面幅の70%
+                                    height: screenHeight * 0.07, // 画面高さの7%
+                                    child: Stack(
+                                      children: [
+                                        Positioned(
+                                          left: screenWidth * 0.14,
+                                          top: 0,
+                                          child: TextButton(
+                                            style: TextButton.styleFrom(
+                                              backgroundColor: Color(0xFFF6CBD1),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(15),
+                                              ),
+                                              minimumSize: Size(screenWidth * 0.4, screenHeight * 0.07), // 画面幅の70%, 画面高さの7%
+                                            ),
+                                            onPressed: () async {
+                                              if (_formKey.currentState!.validate()) {
+                                                _formKey.currentState!.save();
+                                                await _createUser(context, email, password);
+                                              }
+                                            },
+                                            child: const Center(
+                                              child: Text(
+                                                '登録',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                  fontFamily: 'Inter',
+                                                  fontWeight: FontWeight.w400,
+                                                  height: 0,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-
                         ),
                       ),
                     ],
@@ -223,7 +259,6 @@ class _Registerpage2State extends State<Registerpage2> {
               ],
             ),
           ),
-        )
-    );
+        ));
   }
 }
