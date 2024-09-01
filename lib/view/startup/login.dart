@@ -23,8 +23,8 @@ class _LoginState extends State<Login> {
   Future<void> _signIn(BuildContext context,String email,String password) async{
     try{
       await userAuth.signInWithEmailAndPassword(email: email, password: password);
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => Navigation()));
+      Navigator.pushAndRemoveUntil(
+          context, MaterialPageRoute(builder: (context) => Navigation()),(_) => false);
     }catch(e){
       print(e);
       Fluttertoast.showToast(msg: "Firebaseのログインに失敗しました");
@@ -38,8 +38,8 @@ class _LoginState extends State<Login> {
 
     void _RegisterPage(){
       print("Registerへ");
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => Registerpage()));
+      Navigator.pushAndRemoveUntil(
+          context, MaterialPageRoute(builder: (context) => Registerpage()),(_) => false);
 
     }
     return Scaffold(

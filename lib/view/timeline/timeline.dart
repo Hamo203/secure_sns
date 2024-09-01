@@ -67,6 +67,7 @@ class _TimelineState extends State<Timeline> {
                                 CircleAvatar(
                                   radius:30
                                 ),
+                                SizedBox(width: 10,),
                                 Text(account.name),
                               ],
 
@@ -86,11 +87,11 @@ class _TimelineState extends State<Timeline> {
                           isLiked: postlist[index].buttonPush),
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 20,vertical: 5),
+                          color: Colors.white,
                           child: Column(
                             children: [
                               Text(DateFormat('yyyy/M/dd h:mm').format(postlist[index].createdTime!)),
                               Text(postlist[index].description,),
-
                             ],
                           )
                       ),

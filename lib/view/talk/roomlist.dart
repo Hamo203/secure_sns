@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:secure_sns/view/Chat1.dart';
 import 'package:secure_sns/view/Chat2.dart';
 
-import '../../model/account.dart';
 
 class Roomlist extends StatefulWidget {
   const Roomlist({super.key});
@@ -20,7 +19,7 @@ class _RoomlistState extends State<Roomlist> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title:
-        Text('メッセージ',style: TextStyle(color:  Colors.black87,
+        const Text('メッセージ',style: TextStyle(color:  Colors.black87,
             fontSize: 20,
             fontFamily: 'Inria Sans',
             fontWeight:FontWeight.bold,
@@ -36,10 +35,10 @@ class _RoomlistState extends State<Roomlist> {
                 //チャット押したらページ遷移
                 Navigator.of(context).push(MaterialPageRoute(builder: (context)=>Chat_1()));
               },
-              child: Column(
+              child:  Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: EdgeInsets.all(8.0),
                     child: ListTile(
                       //アイコン画像
                       leading: CircleAvatar(radius: 30,),
@@ -59,10 +58,10 @@ class _RoomlistState extends State<Roomlist> {
                 //チャット押したらページ遷移
                 Navigator.of(context).push(MaterialPageRoute(builder: (context)=>Chat_2()));
               },
-              child: Column(
+              child:  Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: EdgeInsets.all(8.0),
                     child: ListTile(
                       //アイコン画像
                       leading: CircleAvatar(radius: 30,backgroundColor: Colors.orangeAccent,),
