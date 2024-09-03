@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:secure_sns/view/account/account_setting.dart';
 import 'package:secure_sns/view/account/user_auth.dart';
 import '../../model/account.dart';
 import '../../model/post.dart';
@@ -20,17 +22,22 @@ class Accountpage extends StatefulWidget {
 
 class _AccountpageState extends State<Accountpage> {
   List<Post> postlist=[];
-  Image? _img;
+  Account account = new Account(
+      name:"",
+      username:"",
+      bio:""
+  );
+
 
   Future<void> fetchPosts() async{
     try{
+      //firebaseからPostの情報を取得する
       QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('users').doc(userAuth.currentUser!.uid)
           .collection('posts')
           .get();
 
       List<Post> loadedPosts = [];
-
       snapshot.docs.forEach((doc){
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         loadedPosts.add( Post(
@@ -52,24 +59,41 @@ class _AccountpageState extends State<Accountpage> {
     }
   }
 
-  Account account = new Account(
-    username: 'hamo235',
-    name: 'hamo',
-    userid: '1',
-    createdDate: DateTime.now(),
-  );
-  List<Post> postlist_net=[];
+  Future<void> fetchAccount() async {
+    try {
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users').doc(userAuth.currentUser!.uid)
+          .get();
+      if (snapshot.exists) {
+        setState(() {
+          account.name = snapshot.get('name');
+          account.username = snapshot.get('username');
+          account.bio = snapshot.get('description');
+        });
+      } else {
+        print('No account data found for this user.');
+      }
+    } catch (e) {
+      print('Failed to fetch account data: $e');
+    }
+  }
+
+
+
 
   @override
   void initState() {
     super.initState();
     fetchPosts();
+    fetchAccount();
   }
 
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
+
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -96,7 +120,7 @@ class _AccountpageState extends State<Accountpage> {
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Text(
-                                "はも",
+                                account.name,
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontFamily: 'Inria Sans',
@@ -104,7 +128,7 @@ class _AccountpageState extends State<Accountpage> {
                                 ),
                               ),
                               Text(
-                                "@hamo235",
+                                '@'+account.username,
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontFamily: 'Inria Sans',
@@ -112,15 +136,7 @@ class _AccountpageState extends State<Accountpage> {
                                 ),
                               ),
                               Text(
-                                "好きなもの --> マイメロ♡",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontFamily: 'Inria Sans',
-                                  color: Colors.black54,
-                                ),
-                              ),
-                              Text(
-                                "好きな食べ物 --> かば焼き",
+                                account.bio,
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontFamily: 'Inria Sans',
@@ -171,10 +187,22 @@ class _AccountpageState extends State<Accountpage> {
                       ],
                     ),
                     Positioned(
+                      //アカウント設定
                       top: 0,
                       right: 0,
                       child: OutlinedButton(
-                        onPressed: () {},
+                        onPressed: () async{
+                          await showModalBottomSheet<void>(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            isScrollControlled: false,
+                            enableDrag: true,
+                            barrierColor: Colors.black.withOpacity(0.5),
+                            builder:(context){
+                            return AccountSetting();}
+                          );
+                          },
+
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: Color(0xFFC5D8E7)),
                         ),
@@ -196,6 +224,8 @@ class _AccountpageState extends State<Accountpage> {
                 itemCount: postlist.length,
                 itemBuilder: (BuildContext context, int index) {
                   return Container(
+
+                    color: Colors.white,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -222,6 +252,7 @@ class _AccountpageState extends State<Accountpage> {
                           isLiked: postlist[index].buttonPush,
                         ),
                         SizedBox(height: 20),
+                        Divider(),
                       ],
                     ),
                   );
