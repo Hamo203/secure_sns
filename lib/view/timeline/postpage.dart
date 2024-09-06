@@ -72,7 +72,6 @@ class _PostpageState extends State<Postpage> {
         'postAccount': _post.postAccount,
         'retweetCount': _post.retweetCount,
       });
-
       print("保存が完了した");
     } catch (e) {
       print('アップロード中にエラーが発生しました: $e');

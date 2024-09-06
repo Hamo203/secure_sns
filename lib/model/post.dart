@@ -3,7 +3,7 @@ class Post {
 
   String postAccount;
   String description;
-  String? imagePath;
+  String imagePath;
   DateTime createdTime;
   bool buttonPush;
   int favoriteCount;
@@ -15,6 +15,7 @@ class Post {
         required this.createdTime,
         this.buttonPush=false,
         this.favoriteCount=0,
-        this.retweetCount=0
+        this.retweetCount=0,
+        this.imagePath =' '
       });
 }
