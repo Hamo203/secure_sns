@@ -26,52 +26,61 @@ class _PostpageState extends State<Postpage> {
   Future captureImage() async {
     // Capture a photo.
     final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+    if (photo == null) {
+      print('No image selected');
+      return;
+    }
     setState(() {
-      _image = File(photo!.path);
+      _image = File(photo.path);
     });
   }
 
   Future getImageFromGallery() async{
     // Pick an image.
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) {
+      print('No image selected');
+      return;
+    }
+
     setState(() {
-      _image = File(image!.path);
+      _image = File(image.path);
     });
   }
 
-  void _upload(DocumentReference _mainReference) async {
-    if (_image == null) return;
-    // imagePickerで画像を選択する
-    // upload
-    XFile? pickerFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickerFile == null) return; // 画像が選択されなかった場合の処理
-    File file = File(pickerFile.path);
-
-    FirebaseStorage storage = FirebaseStorage.instance;
-    String imageUrl;
-
+  Future<void> _upload(DocumentReference _mainReference) async {
+    if (_image == null) {
+      print("Error: Image is null");
+      return;
+    }
     try {
+      FirebaseStorage storage = FirebaseStorage.instance;
+      String imageUrl;
+
       TaskSnapshot snapshot = await storage
           .ref("users/${userAuth.currentUser!.uid}/posts/${_mainReference.id}.png")
           .putFile(_image!);
+
       imageUrl = await snapshot.ref.getDownloadURL();
       _formKey.currentState!.save();
-      _mainReference.set(
-          {
-            'createdTime':_post.createdTime,
-            'description':_post.description,
-            'favoriteCount':_post.favoriteCount,
-            'imagePath':imageUrl,
-            'postAccount':_post.postAccount,
-            'retweetCount':_post.retweetCount,
-          }
-      );
-      print("保存が完了した");
 
+      await _mainReference.set({
+        'createdTime': _post.createdTime,
+        'description': _post.description,
+        'favoriteCount': _post.favoriteCount,
+        'imagePath': imageUrl,
+        'postAccount': _post.postAccount,
+        'retweetCount': _post.retweetCount,
+      });
+
+      print("保存が完了した");
     } catch (e) {
-      print(e);
+      print('アップロード中にエラーが発生しました: $e');
     }
   }
+
+
+
 
 
 
@@ -85,38 +94,43 @@ class _PostpageState extends State<Postpage> {
       appBar: AppBar(
         title: Text("新規投稿"),
         actions: <Widget>[
-          /*
-          IconButton(
-              onPressed: (
-                  ){},
-              icon: Image.asset('images/OIP.jpg'),
-          ),*/
+
           IconButton(
             //snsにシェア用
             icon: Icon(Icons.save),
-            onPressed: () async{
-              print("保存ボタンを押した");
-              try{
-                if(_image!=null){
-                  print("写真在り");
-                  _upload(_mainReference);
-                  Navigator.pushAndRemoveUntil(
-                      context, MaterialPageRoute(builder: (context) => Navigation()),(_) => false);
-                }else{
-                  _formKey.currentState!.save();
-                  _mainReference.set(
-                      {
-                        'createdTime':_post.createdTime,
-                        'description':_post.description,
-                        'favoriteCount':_post.favoriteCount,
-                        'imagePath':'imageurl',
-                        'postAccount':_post.postAccount,
-                        'retweetCount':_post.retweetCount,
-                      }
-                  );
-                }
-              } catch (e) {
-                print('保存に失敗しました: $e');
+              onPressed: () async {
+                print("保存ボタンを押した");
+                try {
+                  // フォームが有効か確認
+                  if (_formKey.currentState!.validate()) {
+                    _formKey.currentState!.save();
+
+                    // 画像がある場合は画像をアップロードしてからデータを保存
+                    if (_image != null) {
+                      print("写真あり");
+                      await _upload(_mainReference);  // 非同期でアップロードを待つ
+                    } else {
+                      // 画像がない場合はimagePathをデフォルト値で保存
+                      print("写真なし");
+                      await _mainReference.set({
+                        'createdTime': _post.createdTime,
+                        'description': _post.description,
+                        'favoriteCount': _post.favoriteCount,
+                        'imagePath': 'imageurl',  // デフォルトのURLや空の値を入れる
+                        'postAccount': _post.postAccount,
+                        'retweetCount': _post.retweetCount,
+                      });
+                    }
+
+                    // 処理が完了したら画面遷移
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => Navigation()),
+                          (_) => false,
+                    );
+                  }
+                } catch (e) {
+                  print('保存に失敗しました: $e');
                 }
               }
 
