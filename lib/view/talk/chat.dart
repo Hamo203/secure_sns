@@ -1,228 +1,157 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
-import 'package:intl/date_symbol_data_local.dart';
-import 'package:mime/mime.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+class FirestoreChatPage extends StatefulWidget {
+  final String chatId; // チャットルームID
+  final String partnerId; // チャット相手のID
 
-
-
-class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+  const FirestoreChatPage({
+    //引数指定
+    required this.chatId,
+    required this.partnerId,
+    Key? key,
+  }) : super(key: key);
 
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  State<FirestoreChatPage> createState() => _FirestoreChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _FirestoreChatPageState extends State<FirestoreChatPage> {
   List<types.Message> _messages = [];
-  final _user = const types.User(
-    id: '82091008-a484-4a89-ae75-a22bf8d6f3ac',
-  );
+  late String _userId; // ログインしているユーザーID
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
     super.initState();
-    _loadMessages();
+    _loadUserId();
+    _loadMessagesFromFirestore();
   }
 
-  void _addMessage(types.Message message) {
-    setState(() {
-      _messages.insert(0, message);
-    });
-  }
-
-  void _handleAttachmentPressed() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (BuildContext context) => SafeArea(
-        child: SizedBox(
-          height: 144,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _handleImageSelection();
-                },
-                child: const Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text('Photo'),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _handleFileSelection();
-                },
-                child: const Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text('File'),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text('Cancel'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _handleFileSelection() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.any,
-    );
-
-    if (result != null && result.files.single.path != null) {
-      final message = types.FileMessage(
-        author: _user,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-        id: const Uuid().v4(),
-        mimeType: lookupMimeType(result.files.single.path!),
-        name: result.files.single.name,
-        size: result.files.single.size,
-        uri: result.files.single.path!,
-      );
-
-      _addMessage(message);
+  // FirebaseAuth からユーザーIDを取得
+  void _loadUserId() {
+    final user = _auth.currentUser;
+    if (user != null) {
+      setState(() {
+        _userId = user.uid;
+      });
+    } else {
+      print("User not logged in");
     }
   }
 
-  void _handleImageSelection() async {
-    final result = await ImagePicker().pickImage(
-      imageQuality: 70,
-      maxWidth: 1440,
-      source: ImageSource.gallery,
-    );
+  // Firestoreからメッセージ履歴を取得
 
-    if (result != null) {
-      final bytes = await result.readAsBytes();
-      final image = await decodeImageFromList(bytes);
+  void _loadMessagesFromFirestore() {
+    FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.chatId)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        // メッセージの配列を取得、なければ空のリストを設定
+        List<dynamic> messageList = snapshot.data() != null && snapshot.get('messages') != null
+            ? snapshot.get('messages') as List<dynamic>
+            : [];
 
-      final message = types.ImageMessage(
-        author: _user,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-        height: image.height.toDouble(),
-        id: const Uuid().v4(),
-        name: result.name,
-        size: bytes.length,
-        uri: result.path,
-        width: image.width.toDouble(),
-      );
+        // メッセージリストを変換して表示できる形式にする
+        List<types.Message> loadedMessages = messageList.map((messageData) {
 
-      _addMessage(message);
-    }
-  }
-
-  void _handleMessageTap(BuildContext _, types.Message message) async {
-    if (message is types.FileMessage) {
-      var localPath = message.uri;
-
-      if (message.uri.startsWith('http')) {
-        try {
-          final index =
-          _messages.indexWhere((element) => element.id == message.id);
-          final updatedMessage =
-          (_messages[index] as types.FileMessage).copyWith(
-            isLoading: true,
+          //flutter-chat-uiの使用通り
+          return types.TextMessage(
+            author: types.User(id: messageData['senderId']),
+            createdAt: (messageData['createdAt'] as Timestamp).millisecondsSinceEpoch,
+            id: const Uuid().v4(),
+            text: messageData['text'],
           );
+        }).toList();
 
-          setState(() {
-            _messages[index] = updatedMessage;
-          });
+        loadedMessages.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
 
-          final client = http.Client();
-          final request = await client.get(Uri.parse(message.uri));
-          final bytes = request.bodyBytes;
-          final documentsDir = (await getApplicationDocumentsDirectory()).path;
-          localPath = '$documentsDir/${message.name}';
 
-          if (!File(localPath).existsSync()) {
-            final file = File(localPath);
-            await file.writeAsBytes(bytes);
-          }
-        } finally {
-          final index =
-          _messages.indexWhere((element) => element.id == message.id);
-          final updatedMessage =
-          (_messages[index] as types.FileMessage).copyWith(
-            isLoading: null,
-          );
-
-          setState(() {
-            _messages[index] = updatedMessage;
-          });
-        }
+        setState(() {
+          _messages = loadedMessages;
+        });
       }
-
-      await OpenFilex.open(localPath);
-    }
-  }
-
-  void _handlePreviewDataFetched(
-      types.TextMessage message,
-      types.PreviewData previewData,
-      ) {
-    final index = _messages.indexWhere((element) => element.id == message.id);
-    final updatedMessage = (_messages[index] as types.TextMessage).copyWith(
-      previewData: previewData,
-    );
-
-    setState(() {
-      _messages[index] = updatedMessage;
     });
   }
 
-  void _handleSendPressed(types.PartialText message) {
+  // メッセージを送信する処理
+  void _handleSendPressed(types.PartialText message) async {
+    if (_userId.isEmpty) return;
+
     final textMessage = types.TextMessage(
-      author: _user,
+      author: types.User(id: _userId), // 現在のユーザーIDを設定
       createdAt: DateTime.now().millisecondsSinceEpoch,
       id: const Uuid().v4(),
       text: message.text,
     );
 
     _addMessage(textMessage);
+
+    // 新しいメッセージデータを作成
+    Map<String, dynamic> newMessageData = {
+      'text': message.text,
+      'senderId': _userId,
+      'createdAt': Timestamp.now(),
+    };
+
+    try {
+      // Firestoreの既存のメッセージ配列を取得し、新しいメッセージを追加
+      DocumentReference chatDocRef = FirebaseFirestore.instance.collection('chats').doc(widget.chatId);
+      DocumentSnapshot snapshot = await chatDocRef.get();
+
+      if (snapshot.exists && snapshot.data() != null) {
+        // 既存のメッセージ配列を取得　なければ空のリストを初期化
+        List<dynamic> messageList = snapshot.get('messages') ?? [];
+
+        // 新しいメッセージをリストに追加
+        messageList.add(newMessageData);
+
+        // Firestoreにメッセージリストを更新
+        await chatDocRef.set({
+          'messages': messageList,
+          'lastMessage': message.text, // 最後のメッセージを保存
+          'lastMessageTime': Timestamp.now(), // 最後のメッセージ時間を保存
+        }, SetOptions(merge: true));
+      } else {
+        // snapshotのデータがないときに自動で新しく作る
+        await chatDocRef.set({
+          'messages': [newMessageData], // メッセージ配列を追加
+          'participants': [widget.partnerId, _userId], // 参加者情報
+          'lastMessage': message.text,
+          'lastMessageTime': Timestamp.now(), // 最後のメッセージ時間を保存
+        });
+      }
+    } catch (e) {
+      print("Error saving message: $e");
+    }
   }
 
-  void _loadMessages() async {
-    final response = await rootBundle.loadString('assets/messages.json');
-    final messages = (jsonDecode(response) as List)
-        .map((e) => types.Message.fromJson(e as Map<String, dynamic>))
-        .toList();
-
+  // 新しいメッセージをメッセージリストに追加
+  void _addMessage(types.Message message) {
     setState(() {
-      _messages = messages;
+      _messages.insert(0, message); // 新しいメッセージをリストの先頭に追加
     });
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: Chat(
+    appBar: AppBar(
+      title: const Text('チャット'),
+    ),
+    body: _userId.isNotEmpty
+        ? Chat(
       messages: _messages,
-      onAttachmentPressed: _handleAttachmentPressed,
-      onMessageTap: _handleMessageTap,
-      onPreviewDataFetched: _handlePreviewDataFetched,
-      onSendPressed: _handleSendPressed,
+      onSendPressed: _handleSendPressed, // メッセージ送信時に実行される関数
       showUserAvatars: true,
       showUserNames: true,
-      user: _user,
-    ),
+      user: types.User(id: _userId), // 現在のユーザー情報を設定
+    )
+        : const Center(child: CircularProgressIndicator()), // ユーザーIDが取得されるまでローディングを表示
   );
 }
