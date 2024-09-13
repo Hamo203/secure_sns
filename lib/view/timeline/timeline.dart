@@ -1,9 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../model/account.dart';
 import '../../model/post.dart';
 import 'package:like_button/like_button.dart';
+
+import '../account/user_auth.dart';
+import '../startup/login.dart';
 
 class Timeline extends StatefulWidget {
   const Timeline({super.key});
@@ -14,36 +19,107 @@ class Timeline extends StatefulWidget {
 
 class _TimelineState extends State<Timeline> {
 
-  Account account =new Account(
-      username:'hamo235',
-      name: 'hamo',
-      userid:'1',
-      createdDate:DateTime.now()
-  );
 
-  List<Post> postlist=[Post(
-    postid:'1',
-    description :'目が疲れた',
-    createdTime :DateTime.now(),
-    postAccount:'1',
-    buttonPush: false,
-    favoriteCount: 0,
-    retweetCount: 0
-  ),
-    Post(
-      postid:'2',
-      description :'腰が疲れた',
-      createdTime :DateTime.now(),
-      postAccount:'1',
-      buttonPush: false,
-        favoriteCount: 0,
-        retweetCount: 0
-    )];
+  @override
+  void initState() {
+    super.initState();
+    fetchPosts();
+    //fetchAccount();
+  }
+
+  List<Post> postlist= [];
+
+  //postの取得
+  Future<void> fetchPosts() async{
+    List<Post> loadedPosts = [];
+
+    //followしている人の投稿をTLに流す
+    List<dynamic> followingId;
+    try{
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users').doc(userAuth.currentUser!.uid).get();
+      if (snapshot.exists) {
+        followingId =snapshot.get('followers');
+        try{
+          //firebaseからPostの情報を取得する
+          for(var value in followingId){
+            print('firebaseからPostの情報を取得する');
+            QuerySnapshot snapshot = await FirebaseFirestore.instance
+                .collection('users').doc(value)
+                .collection('posts')
+                .get();
+            snapshot.docs.forEach((doc){
+              Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+              loadedPosts.add( Post(
+                postid: doc.id,
+                description: data['description'],
+                createdTime: (data['createdTime'] as Timestamp).toDate(),
+                postAccount: data['postAccount'],
+                buttonPush: data['buttonPush'] ?? false,
+                favoriteCount: data['favoriteCount'] ?? 0,
+                retweetCount: data['retweetCount'] ?? 0,
+                imagePath:data['imagePath'],
+              ));
+            });
+            print('Loaded post: ${loadedPosts[0].postAccount}');
+          }
+          setState(() {
+            postlist = loadedPosts;
+          });
+
+        } catch (e) {
+          print('Failed to fetch posts: $e');
+        }
+      }
+    }catch(e){
+      print("error :$e");
+    }
+  }
+
+//accountの取得 -> Account Pageの上の部分
+  Future<String> fetchAccountname(String userid) async {
+    try {
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users').doc(userid)
+          .get();
+      if (snapshot.exists) {
+        // username と nameを返す
+        return snapshot.get('name')+' @'+snapshot.get('username');
+      } else {
+        print('can not get username ');
+        return '';
+      }
+    } catch (e) {
+      print('Failed to fetch account data: $e');
+      return '';
+    }
+  }
+
+  Future<void> _deletePost(String postId, int index) async {
+    try {
+      // Firestoreから削除
+      await FirebaseFirestore.instance.collection('users')
+          .doc(userAuth.currentUser!.uid).collection('posts')
+          .doc(postId).delete();
+
+      // ローカルリストから削除
+      setState(() {
+        postlist.removeAt(index);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("投稿が削除されました")),
+      );
+    } catch (e) {
+      print('Failed to delete post: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("投稿の削除に失敗しました")),
+      );
+    }
+  }
 
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: Text("タイムライン"),
@@ -52,24 +128,59 @@ class _TimelineState extends State<Timeline> {
       drawer: Drawer(
         child: ListView(
           children: <Widget>[
-            DrawerHeader(
-              child: Text('Drawer Header'),
-              decoration: BoxDecoration(
-                color: Colors.blue,
+            SizedBox(
+              height: 80,
+              child: DrawerHeader(
+                child: Text('設定とアクティビティ'),
+                decoration: BoxDecoration(
+                  color:  Color(0xFFC5D8E7),
+                ),
               ),
             ),
+
             ListTile(
-              title: Text('Item 1'),
+              title: Text('アカウント情報'),
               onTap: () {
                 // Do something
                 Navigator.pop(context);
               },
             ),
             ListTile(
-              title: Text('Item 2'),
-              onTap: () {
+              title: Text('ログアウト'),
+              onTap: () async {
                 // Do something
-                Navigator.pop(context);
+                bool? confirm = await showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text("ログアウト"),
+                    content:
+                    Text("ログアウトしてもよろしいですか？"),
+                    actions: [
+                      TextButton(
+                        child: Text("キャンセル"),
+                        onPressed: () {
+                          Navigator.of(context).pop(
+                              false); // キャンセルを返す
+                        },
+                      ),
+                      TextButton(
+                        child: Text("はい"),
+                        onPressed: () {
+                          Navigator.of(context).pop(
+                              true); // 削除を返す
+                        },
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  FirebaseAuth.instance.signOut();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => Login()),
+                        (_) => false,
+                  );
+                }
               },
             ),
           ],
@@ -79,7 +190,136 @@ class _TimelineState extends State<Timeline> {
         child: ListView.builder(
             itemCount: postlist.length,
             itemBuilder: (BuildContext context,int index){
-              return Container(
+              return FutureBuilder(
+                future: fetchAccountname(postlist[index].postAccount),
+                builder: (context ,snapshot){
+                  //読み込み終わってなかったらぐるぐる
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return CircularProgressIndicator();
+                  } else if (snapshot.hasError) {
+                    return Text("Error");
+                  }else{
+                    return Container(
+                      color: Colors.white,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 5,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        // アイコンの表示
+                                        CircleAvatar(
+                                          //アイコン用
+                                          radius: 20,
+                                        ),
+                                        SizedBox(width: 10),
+                                        // username と nameを表示
+                                        Text(snapshot.data ?? ''),
+                                        SizedBox(width: 10),
+                                      ],
+                                    ),
+                                    IconButton(
+                                      //投稿削除用のボタン
+                                      icon: const Icon(Icons.delete),
+                                      onPressed: () async {
+                                        // 確認ダイアログを表示
+                                        bool? confirm = await showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: Text("投稿の削除"),
+                                            content:
+                                            Text("本当にこの投稿を削除しますか？"),
+                                            actions: [
+                                              TextButton(
+                                                child: Text("キャンセル"),
+                                                onPressed: () {
+                                                  Navigator.of(context).pop(
+                                                      false); // キャンセルを返す
+                                                },
+                                              ),
+                                              TextButton(
+                                                child: Text("削除"),
+                                                onPressed: () {
+                                                  Navigator.of(context).pop(
+                                                      true); // 削除を返す
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        );
+
+                                        if (confirm == true) {
+                                          _deletePost(postlist[index].postid!, index);
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                ListTile(
+                                  //投稿内容
+                                    title:Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children:[
+                                          //投稿内容
+                                          Text(postlist[index].description),
+                                          // 画像が存在する場合のみ表示
+                                          if (postlist[index].imagePath!="imageurl")
+                                            Image.network(postlist[index].imagePath),
+
+                                        ]
+                                    ),
+                                    onTap:(){
+                                      print("押された");
+                                    }
+                                ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        // 時間の表示
+                                        Text(DateFormat('yyyy/M/dd h:mm').format(
+                                            postlist[index].createdTime!)),
+                                        SizedBox(width: 10),
+                                        LikeButton(
+                                          size: 30,
+                                          likeCount: postlist[index].favoriteCount,
+                                          isLiked: postlist[index].buttonPush,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Divider(),
+                        ],
+                      ),
+                    );
+                  }
+                },
+
+              );
+            }
+        ),
+      ),
+    );
+  }
+}
+
+/*
+* Container(
                   child:Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -125,15 +365,5 @@ class _TimelineState extends State<Timeline> {
                     ],
 
                   ),
-
-
-
-              );
-
-
-            }
-        ),
-      ),
-    );
-  }
-}
+              )
+* */

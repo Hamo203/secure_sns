@@ -33,7 +33,7 @@ class _RoomlistState extends State<Roomlist> {
             InkWell(
               onTap: (){
                 //チャット押したらページ遷移
-                Navigator.of(context).push(MaterialPageRoute(builder: (context)=>Chat_1()));
+                Navigator.of(context).push(MaterialPageRoute(builder: (context)=>Chat_2()));
               },
               child:  Column(
                 children: [
@@ -86,36 +86,3 @@ class _RoomlistState extends State<Roomlist> {
 
 
 }
-
-/*
-/*
-      appBar: AppBar(
-        title: Text("message"),
-        actions: !search
-            ?[
-          IconButton(
-              onPressed: (){
-                setState(() {
-                  //ボタン押されたらUIを更新する
-                  search =true;
-                });
-              },
-              //falseだったら虫眼鏡マーク
-              icon: Icon(Icons.search)
-          )
-        ] : [
-          IconButton(
-              onPressed: (){
-                setState(() {
-                  //ボタン押されたらUIを更新する
-                  search =false;
-                });
-              },
-              //trueだったら×マーク
-              icon: Icon(Icons.clear)
-          )
-        ],
-      ),
-      body: _defaultListView(),
-    );*/
-* */
