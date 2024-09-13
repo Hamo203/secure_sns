@@ -226,6 +226,7 @@ class _TimelineState extends State<Timeline> {
                                         // username と nameを表示
                                         Text(snapshot.data ?? ''),
                                         SizedBox(width: 10),
+
                                       ],
                                     ),
                                     IconButton(
@@ -298,6 +299,7 @@ class _TimelineState extends State<Timeline> {
                                         ),
                                       ],
                                     ),
+
                                   ],
                                 ),
                               ],

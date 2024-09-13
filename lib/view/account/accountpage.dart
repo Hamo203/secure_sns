@@ -27,6 +27,8 @@ class _AccountpageState extends State<Accountpage> {
       username:"",
       bio:""
   );
+
+  //postの取得
   Future<void> fetchPosts() async{
     try{
       //firebaseからPostの情報を取得する
@@ -55,6 +57,8 @@ class _AccountpageState extends State<Accountpage> {
       print('Failed to fetch posts: $e');
     }
   }
+
+  //accountの取得 -> Account Pageの上の部分
   Future<void> fetchAccount() async {
     try {
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
@@ -73,6 +77,8 @@ class _AccountpageState extends State<Accountpage> {
       print('Failed to fetch account data: $e');
     }
   }
+
+  //Post消す
   Future<void> _deletePost(String postId, int index) async {
     try {
       // Firestoreから削除
@@ -259,9 +265,7 @@ class _AccountpageState extends State<Accountpage> {
                                         radius: 20,
                                       ),
                                       SizedBox(width: 10), // 時間とアイコンの間のスペース
-                                      // 時間の表示
-                                      Text(DateFormat('yyyy/M/dd h:mm').format(
-                                          postlist[index].createdTime!)),
+                                      Text(account.name+' @'+account.username),
                                       SizedBox(width: 10), // 時間とアイコンの間のスペース
                                     ],
                                   ),
@@ -312,16 +316,25 @@ class _AccountpageState extends State<Accountpage> {
                                     // 画像が存在する場合のみ表示
                                     if (postlist[index].imagePath!="imageurl")
                                       Image.network(postlist[index].imagePath),
-                                    LikeButton(
-                                      size: 30,
-                                      likeCount: postlist[index].favoriteCount,
-                                      isLiked: postlist[index].buttonPush,
-                                    ),
+
                                   ]
                                 ),
                                 onTap:(){
                                   print("押された");
                                 }
+                              ),
+                              Row(
+                                children: [
+                                  Text(DateFormat('yyyy/M/dd h:mm').format(
+                                      postlist[index].createdTime!)),
+                                  SizedBox(width: 10),
+                                  LikeButton(
+                                    size: 30,
+                                    likeCount: postlist[index].favoriteCount,
+                                    isLiked: postlist[index].buttonPush,
+                                  ),
+
+                                ],
                               ),
                             ],
                           ),
