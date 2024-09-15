@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:secure_sns/view/account/accountpage.dart';
 
 import '../../model/account.dart';
 import '../../model/post.dart';
@@ -18,13 +19,10 @@ class Timeline extends StatefulWidget {
 }
 
 class _TimelineState extends State<Timeline> {
-
-
   @override
   void initState() {
     super.initState();
     fetchPosts();
-    //fetchAccount();
   }
 
   List<Post> postlist= [];
@@ -76,7 +74,7 @@ class _TimelineState extends State<Timeline> {
     }
   }
 
-//accountの取得 -> Account Pageの上の部分
+  //postに必要なアカウント情報を取得
   Future<String> fetchAccountname(String userid) async {
     try {
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
@@ -117,7 +115,6 @@ class _TimelineState extends State<Timeline> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -125,6 +122,8 @@ class _TimelineState extends State<Timeline> {
         title: Text("タイムライン"),
         centerTitle: true,
       ),
+
+      //設定用のdrawer
       drawer: Drawer(
         child: ListView(
           children: <Widget>[
@@ -186,6 +185,7 @@ class _TimelineState extends State<Timeline> {
           ],
         ),
       ),
+
       body: Center(
         child: ListView.builder(
             itemCount: postlist.length,
@@ -217,16 +217,32 @@ class _TimelineState extends State<Timeline> {
                                   children: [
                                     Row(
                                       children: [
-                                        // アイコンの表示
-                                        CircleAvatar(
-                                          //アイコン用
-                                          radius: 20,
+                                        //アイコンボタン
+                                        ElevatedButton(
+                                          style:ElevatedButton.styleFrom(
+                                            shape: CircleBorder(),
+                                            padding: EdgeInsets.all(7)
+                                          ),
+                                          onPressed: () {
+                                            //アイコンが押された人のAccountPageに飛ぶ
+                                            Navigator.of(context).push(MaterialPageRoute(
+                                              builder: (context) => Accountpage(
+                                                userid: postlist[index].postAccount, // フォロワーのIDを渡す
+                                              ),
+                                            ));
+                                          },
+                                          child: ClipOval(
+                                              child: Image(
+                                                width: 40,
+                                                image: AssetImage('images/testcat.jpg'),
+                                                fit: BoxFit.contain,
+                                              )
+                                          ),
                                         ),
                                         SizedBox(width: 10),
                                         // username と nameを表示
                                         Text(snapshot.data ?? ''),
                                         SizedBox(width: 10),
-
                                       ],
                                     ),
                                     IconButton(
@@ -299,7 +315,6 @@ class _TimelineState extends State<Timeline> {
                                         ),
                                       ],
                                     ),
-
                                   ],
                                 ),
                               ],
