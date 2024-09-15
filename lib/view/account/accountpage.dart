@@ -17,6 +17,7 @@ class Accountpage extends StatefulWidget {
   final String userid;
 
   const Accountpage({
+    //このidの人のAccountpageを表示する
     required this.userid,
     Key? key,
   }): super(key: key);
@@ -27,6 +28,10 @@ class Accountpage extends StatefulWidget {
 
 class _AccountpageState extends State<Accountpage> {
   List<Post> postlist=[];
+
+  bool flag = false;
+
+
   Account account = new Account(
       name:"",
       username:"",
@@ -36,6 +41,8 @@ class _AccountpageState extends State<Accountpage> {
   //postの取得
   Future<void> fetchPosts() async{
     try{
+      //表示するuserのidがログインしているuserのidと一致している時はflagをtrueにする
+      if(widget.userid==userAuth.currentUser!.uid) flag = true;
       //firebaseからPostの情報を取得する
       QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('users').doc(widget.userid)
@@ -225,25 +232,34 @@ class _AccountpageState extends State<Accountpage> {
                       right: 0,
                       child: OutlinedButton(
                         onPressed: () async{
-                          await showModalBottomSheet<void>(
-                            context: context,
-                            backgroundColor: Colors.transparent,
-                            isScrollControlled: false,
-                            enableDrag: true,
-                            barrierColor: Colors.black.withOpacity(0.5),
-                            builder:(context){
-                            return AccountSetting();}
-                          );
+                          if(flag){
+                            //ログインしているユーザのAccountpageを出す時は編集できるようにする
+                            await showModalBottomSheet<void>(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                isScrollControlled: false,
+                                enableDrag: true,
+                                barrierColor: Colors.black.withOpacity(0.5),
+                                builder:(context){
+                                  return AccountSetting();}
+                            );
+                          }else{
+                            print("follow");
+                            }
                           },
-
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: Color(0xFFC5D8E7)),
                         ),
-                        child: Text(
+                        child: flag ? const Text(
                           '編集',
                           style: TextStyle(
                               color: Colors.grey,
-                            fontFamily: 'Inria Sans'),
+                              fontFamily: 'Inria Sans'),
+                        ):const Text(
+                          'フォロー',
+                          style: TextStyle(
+                              color: Colors.grey,
+                              fontFamily: 'Inria Sans'),
                         ),
 
                       ),
