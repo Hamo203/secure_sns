@@ -14,7 +14,12 @@ import '../../model/post.dart';
 import 'package:like_button/like_button.dart';
 
 class Accountpage extends StatefulWidget {
-  const Accountpage({super.key});
+  final String userid;
+
+  const Accountpage({
+    required this.userid,
+    Key? key,
+  }): super(key: key);
 
   @override
   State<Accountpage> createState() => _AccountpageState();
@@ -33,7 +38,7 @@ class _AccountpageState extends State<Accountpage> {
     try{
       //firebaseからPostの情報を取得する
       QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('users').doc(userAuth.currentUser!.uid)
+          .collection('users').doc(widget.userid)
           .collection('posts')
           .get();
       List<Post> loadedPosts = [];
@@ -62,7 +67,7 @@ class _AccountpageState extends State<Accountpage> {
   Future<void> fetchAccount() async {
     try {
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
-          .collection('users').doc(userAuth.currentUser!.uid)
+          .collection('users').doc(widget.userid)
           .get();
       if (snapshot.exists) {
         setState(() {
@@ -115,9 +120,19 @@ class _AccountpageState extends State<Accountpage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              CircleAvatar(
-                //アイコン用
-                radius: 40,
+              ElevatedButton(
+                style:ElevatedButton.styleFrom(
+                    shape: CircleBorder(),
+                    padding: EdgeInsets.all(7)
+                ),
+                onPressed: () {  },
+                child: ClipOval(
+                    child: Image(
+                      width: 80,
+                      image: AssetImage('images/testcat.jpg'),
+                      fit: BoxFit.contain,
+                    )
+                ),
               ),
               Container(
                 padding: EdgeInsets.all(20),
@@ -260,9 +275,19 @@ class _AccountpageState extends State<Accountpage> {
                                   Row(
                                     children: [
                                       // アイコンの表示
-                                      CircleAvatar(
-                                        //アイコン用
-                                        radius: 20,
+                                      ElevatedButton(
+                                        style:ElevatedButton.styleFrom(
+                                            shape: CircleBorder(),
+                                            padding: EdgeInsets.all(7)
+                                        ),
+                                        onPressed: () {  },
+                                        child: ClipOval(
+                                            child: Image(
+                                              width: 40,
+                                              image: AssetImage('images/testcat.jpg'),
+                                              fit: BoxFit.contain,
+                                            )
+                                        ),
                                       ),
                                       SizedBox(width: 10), // 時間とアイコンの間のスペース
                                       Text(account.name+' @'+account.username),
