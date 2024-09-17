@@ -28,15 +28,13 @@ class Accountpage extends StatefulWidget {
 
 class _AccountpageState extends State<Accountpage> {
   List<Post> postlist=[];
-
   bool flag = false;
-
-
   Account account = new Account(
       name:"",
       username:"",
-      bio:""
-  );
+      bio:"",
+      profilePhotoUrl:""
+    );
 
   //postの取得
   Future<void> fetchPosts() async{
@@ -80,6 +78,7 @@ class _AccountpageState extends State<Accountpage> {
         setState(() {
           account.name = snapshot.get('name');
           account.username = snapshot.get('username');
+          account.profilePhotoUrl = snapshot.get('profilePhotoUrl');
           account.bio = snapshot.get('description');
         });
       } else {
@@ -97,7 +96,6 @@ class _AccountpageState extends State<Accountpage> {
       await FirebaseFirestore.instance.collection('users')
           .doc(userAuth.currentUser!.uid).collection('posts')
           .doc(postId).delete();
-
       // ローカルリストから削除
       setState(() {
         postlist.removeAt(index);
@@ -122,6 +120,7 @@ class _AccountpageState extends State<Accountpage> {
 
   @override
   Widget build(BuildContext context) {
+    print(account.profilePhotoUrl);
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -133,12 +132,20 @@ class _AccountpageState extends State<Accountpage> {
                     padding: EdgeInsets.all(7)
                 ),
                 onPressed: () {  },
-                child: ClipOval(
-                    child: Image(
-                      width: 80,
-                      image: AssetImage('images/testcat.jpg'),
-                      fit: BoxFit.contain,
-                    )
+                child:  ClipOval(
+                  child: account.profilePhotoUrl == "imageurl" || account.profilePhotoUrl.isEmpty
+                      ? Image.asset(
+                    'images/kkrn_icon_user_14.png',  // デフォルトのアイコン
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  )
+                      : Image.network(
+                    account.profilePhotoUrl,  // ストレージの画像
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               Container(
@@ -297,12 +304,20 @@ class _AccountpageState extends State<Accountpage> {
                                             padding: EdgeInsets.all(7)
                                         ),
                                         onPressed: () {  },
-                                        child: ClipOval(
-                                            child: Image(
-                                              width: 40,
-                                              image: AssetImage('images/testcat.jpg'),
-                                              fit: BoxFit.contain,
-                                            )
+                                        child:  ClipOval(
+                                          child: account.profilePhotoUrl == "imageurl" || account.profilePhotoUrl.isEmpty
+                                              ? Image.asset(
+                                            'images/kkrn_icon_user_14.png',  // デフォルトのアイコン
+                                            width: 40,
+                                            height: 40,
+                                            fit: BoxFit.cover,
+                                          )
+                                              : Image.network(
+                                            account.profilePhotoUrl,  // ストレージの画像
+                                            width: 40,
+                                            height: 40,
+                                            fit: BoxFit.cover,
+                                          ),
                                         ),
                                       ),
                                       SizedBox(width: 10), // 時間とアイコンの間のスペース
@@ -310,8 +325,8 @@ class _AccountpageState extends State<Accountpage> {
                                       SizedBox(width: 10), // 時間とアイコンの間のスペース
                                     ],
                                   ),
+                                  //投稿削除用のボタン
                                   IconButton(
-                                    //投稿削除用のボタン
                                     icon: const Icon(Icons.delete),
                                     onPressed: () async {
                                       // 確認ダイアログを表示

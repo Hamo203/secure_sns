@@ -21,13 +21,45 @@ class _AccountSettingState extends State<AccountSetting> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  Future<void> _setaccount(DocumentReference _mainReference) async {
+  @override
+  void initState() {
+    super.initState();
+    fetchAccount();
+  }
 
+  //accountの取得 -> Account Pageの上の部分
+  Future<void> fetchAccount() async {
+    print("fetchAccount");
+    try {
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users').doc(userAuth.currentUser!.uid)
+          .get();
+      if (snapshot.exists) {
+        setState(() {
+          _account.name = snapshot.get('name');
+          _account.username = snapshot.get('username');
+          _account.profilePhotoUrl = snapshot.get('profilePhotoUrl');
+          _account.bio = snapshot.get('description');
+
+          // コントローラーに値を反映
+          _nameController.text = _account.name;
+          _usernameController.text = _account.username;
+          _descriptionController.text = _account.bio;
+        });
+      } else {
+        print('No account data found for this user.');
+      }
+    } catch (e) {
+      print('Failed to fetch account data: $e');
+    }
+  }
+  Future<void> _setaccount(DocumentReference _mainReference) async {
     try {
       _formKey.currentState!.save();
       await _mainReference.set({
         'name': _account.name,
         'username': _account.username,
+        'profilePhotoUrl':_account.profilePhotoUrl,
         'description': _account.bio,
       });
       Fluttertoast.showToast(msg: "保存に成功しました");
@@ -39,15 +71,12 @@ class _AccountSettingState extends State<AccountSetting> {
 
   @override
   Widget build(BuildContext context) {
+    //読み込みたいドキュメントを取得
     DocumentReference _mainReference = FirebaseFirestore.instance
         .collection('users')
         .doc(userAuth.currentUser!.uid);
-    print(userAuth.currentUser!.uid);
-
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
-
-
     return Scaffold(
       body: SingleChildScrollView(
         child: Container(
@@ -64,8 +93,33 @@ class _AccountSettingState extends State<AccountSetting> {
                   child: Column(
                     children: [
                       SizedBox(height: screenHeight * 0.05),
-                      CircleAvatar(
-                        radius: 40,
+                      ElevatedButton(
+                        style:ElevatedButton.styleFrom(
+                            shape: CircleBorder(),
+                            padding: EdgeInsets.all(7)
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            //_account.profilePhotoUrl = newPhotoUrl; // 新しいURLをセット
+                          });
+                          //アイコンが押された->写真変更
+                          //print(_account.profilePhotoUrl);
+                        },
+                        child:  ClipOval(
+                          child: _account.profilePhotoUrl == "imageurl" || _account.profilePhotoUrl.isEmpty
+                              ? Image.asset(
+                            'images/kkrn_icon_user_14.png',  // デフォルトのアイコン
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          )
+                              : Image.network(
+                            _account.profilePhotoUrl,  // ストレージの画像
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
                       SizedBox(height: screenHeight * 0.05),
                       TextFormField(
