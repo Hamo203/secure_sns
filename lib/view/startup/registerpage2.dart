@@ -1,6 +1,12 @@
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../model/account.dart';
 import '../../navigation.dart';
 import '../account/user_auth.dart';
 
@@ -13,19 +19,72 @@ class Registerpage2 extends StatefulWidget {
 
 class _Registerpage2State extends State<Registerpage2> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  String email = "";
-  String password = "";
-  TextEditingController _emailController = TextEditingController();
-  TextEditingController _passwordController = TextEditingController();
+  String name = "";
+  String username = "";
+  String bio = "";
 
-  Future<void> _createUser(BuildContext context, String email, String password) async {
+  TextEditingController _nameController = TextEditingController();
+  TextEditingController _usernameController = TextEditingController();
+
+  File? _image ;
+  final ImagePicker picker = ImagePicker();
+  //写真撮影用
+  Future captureImage() async {
+    // Capture a photo.
+    final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+    if (photo == null) {
+      print('No image selected');
+      return;
+    }
+    setState(() {
+      _image = File(photo.path);
+    });
+  }
+  //写真をギャラリーから取得用
+  Future getImageFromGallery() async{
+    // Pick an image.
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) {
+      print('No image selected');
+      return;
+    }
+    setState(() {
+      _image = File(image.path);
+    });
+  }
+
+  final Account _newAccount = Account();
+  Future<void> _setaccount(DocumentReference _mainReference) async {
     try {
-      await userAuth.createUserWithEmailAndPassword(email: email, password: password);
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => Navigation()));
+      FirebaseStorage storage = FirebaseStorage.instance;
+      String imageUrl;
+      if(_image==null){
+        print("image is null");
+        imageUrl='imageurl';
+      }
+      else{
+        print("image is not null");
+        TaskSnapshot snapshot = await storage
+            .ref("users/${userAuth.currentUser!.uid}/${_mainReference.id}.png")
+            .putFile(_image!);
+        imageUrl = await snapshot.ref.getDownloadURL();
+      }
+      _formKey.currentState!.save();
+      await _mainReference.set({
+        'name': _newAccount.name,
+        'username': _newAccount.username,
+        'profilePhotoUrl':imageUrl,
+        'followers': [],
+      });
+      Fluttertoast.showToast(msg: "保存に成功しました");
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => Navigation()),
+            (_) => false,
+      );
     } catch (e) {
       print(e);
-      Fluttertoast.showToast(msg: "Firebaseの登録に失敗しました");
+      Fluttertoast.showToast(msg: "保存に失敗しました:");
     }
   }
 
@@ -34,231 +93,174 @@ class _Registerpage2State extends State<Registerpage2> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
+    //読み込みたいドキュメントを取得
+    DocumentReference _mainReference = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userAuth.currentUser!.uid);
+
     return Scaffold(
-        body: SingleChildScrollView(
-          child: Center(
-            child: Column(
-              children: [
-                Container(
-                  width: screenWidth,
-                  height: screenHeight,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(color: Colors.white),
-                  child: Stack(
+      body:SingleChildScrollView(
+        child: Center(
+          child: Form(
+            key: _formKey,
+            child: Container(
+                margin: EdgeInsets.all(50),
+                child:Column(
+                children: [
+                  SizedBox(height:10),
+                  //title
+                  Text("ユーザ情報を登録しましょう!",
+                      style:TextStyle(
+                        fontSize:20,
+                      )),
+                  SizedBox(height:20),
+                  //ニックネーム入力欄
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'ニックネームを入力',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(
+                          color: Color(0xFFF9E4C8),
+                          width: 3,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(
+                          color: Color(0xFFF9E4C8),
+                          width: 3,
+                        ),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(
+                          color: Colors.red,
+                          width: 3,
+                        ),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(
+                          color: Colors.red,
+                          width: 3,
+                        ),
+                      ),
+
+                    ),
+                    onSaved: (String? value){
+                      _newAccount.name=value!;
+                    },
+                    validator: (value){
+                      if(value!.isEmpty){
+                        return 'ニックネームは必須項目です';
+                      }else {
+                        return null;
+                      }
+                    },
+                  ),
+                  SizedBox(height: screenHeight * 0.05),
+                  //ユーザネーム入力欄
+                  TextFormField(
+                    controller: _usernameController,
+                    decoration: InputDecoration(
+                      labelText: 'ユーザ名を入力',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(
+                          color: Color(0xFFF9E4C8),
+                          width: 3,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(
+                          color: Color(0xFFF9E4C8),
+                          width: 3,
+                        ),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(
+                          color: Colors.red,
+                          width: 3,
+                        ),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(
+                          color: Colors.red,
+                          width: 3,
+                        ),
+                      ),
+
+                    ),
+                    onSaved: (String? value){
+                      _newAccount.username=value!;
+                    },
+                    validator: (value){
+                      if(value!.isEmpty){
+                        return 'ユーザネームは必須項目です';
+                      }else {
+                        return null;
+                      }
+                    },
+                  ),
+                  SizedBox(height: screenHeight * 0.05),
+                  Text("プロフィール画像を入力"),
+                  _image==null
+                  //nullだったら初期アイコンを表示
+                  ? Image.asset("images/kkrn_icon_user_14.png")
+                  :Image.file(_image!),
+                  Row(
+                    mainAxisAlignment:MainAxisAlignment.spaceBetween,
                     children: [
-                      Positioned(
-                        //装飾の〇 下の部分
-                        left: screenWidth * 0.7, // 画面幅の70%
-                        top: screenHeight * 0.8, // 画面高さの80%
-                        child: Container(
-                          width: screenWidth * 0.5, // 画面幅の50%
-                          height: screenHeight * 0.3, // 画面高さの30%
-                          decoration: ShapeDecoration(
-                            color: Color(0xFFF9E4C8),
-                            shape: OvalBorder(),
-                          ),
-                        ),
+                      ElevatedButton(
+                        onPressed: captureImage,
+                        child: Icon(Icons.add_a_photo),
                       ),
-                      Positioned(
-                        //装飾の〇 上の部分
-                        left: screenWidth * -0.1, // 画面幅の-10%
-                        top: screenHeight * -0.05, // 画面高さの-5%
-                        child: Container(
-                          width: screenWidth * 0.4, // 画面幅の40%
-                          height: screenHeight * 0.2, // 画面高さの20%
-                          decoration: ShapeDecoration(
-                            color: Color(0xFFC5D8E7),
-                            shape: OvalBorder(),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: screenWidth * 0.2, // 画面幅の20%
-                        top: screenHeight * 0.25, // 画面高さの25%
-                        child: Text(
-                          'はじめまして！',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: screenWidth * 0.08,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w400,
-                            height: 1,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: screenWidth * 0.15, // 画面幅の15%
-                        top: screenHeight * 0.37, // 画面高さの37%
-                        child: Container(
-                          width: screenWidth * 0.7, // 画面幅の70%
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              children: [
-                                TextFormField(
-                                  controller: _emailController,
-                                  decoration: InputDecoration(
-                                    labelText: 'メールアドレスを入力',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFF9E4C8),
-                                        width: 3,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFF9E4C8),
-                                        width: 3,
-                                      ),
-                                    ),
-                                    errorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide(
-                                        color: Colors.red,
-                                        width: 3,
-                                      ),
-                                    ),
-                                    focusedErrorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide(
-                                        color: Colors.red,
-                                        width: 3,
-                                      ),
-                                    ),
-                                  ),
-                                  onSaved: (String? value) {
-                                    email = value!;
-                                  },
-                                  validator: (value) {
-                                    if (value!.isEmpty) {
-                                      return 'メールアドレスは必須項目です';
-                                    } else if (value.length < 6) {
-                                      return 'メールアドレスが短すぎます';
-                                    } else {
-                                      return null;
-                                    }
-                                  },
-                                ),
-                                SizedBox(height: screenHeight * 0.05),
-                                TextFormField(
-                                  controller: _passwordController,
-                                  decoration: InputDecoration(
-                                    labelText: 'パスワードを入力',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFC5D8E7),
-                                        width: 3,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFC5D8E7),
-                                        width: 3,
-                                      ),
-                                    ),
-                                    errorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide(
-                                        color: Colors.red,
-                                        width: 3,
-                                      ),
-                                    ),
-                                    focusedErrorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                      borderSide: BorderSide(
-                                        color: Colors.red,
-                                        width: 3,
-                                      ),
-                                    ),
-                                  ),
-                                  onSaved: (String? value) {
-                                    password = value!;
-                                  },
-                                  validator: (value) {
-                                    if (value!.isEmpty) {
-                                      return 'パスワードは必須項目です';
-                                    } else if (value.length < 6) {
-                                      return 'パスワードは6桁以上です';
-                                    } else {
-                                      return null;
-                                    }
-                                  },
-                                ),
-                                SizedBox(height: screenHeight * 0.05),
-                                GestureDetector(
-                                  onTap: () async {
-                                    if (_formKey.currentState!.validate()) {
-                                      _formKey.currentState!.save();
-                                      await _createUser(context, email, password);
-                                    }
-                                  },
-                                  child: Container(
-                                    width: screenWidth * 0.7, // 画面幅の70%
-                                    height: screenHeight * 0.07, // 画面高さの7%
-                                    child: Stack(
-                                      children: [
-                                        Positioned(
-                                          left: screenWidth * 0.14,
-                                          top: 0,
-                                          child: TextButton(
-                                            style: TextButton.styleFrom(
-                                              backgroundColor: Color(0xFFF6CBD1),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(15),
-                                              ),
-                                              minimumSize: Size(screenWidth * 0.4, screenHeight * 0.07), // 画面幅の70%, 画面高さの7%
-                                            ),
-                                            onPressed: () async {
-                                              if (_formKey.currentState!.validate()) {
-                                                _formKey.currentState!.save();
-                                                await _createUser(context, email, password);
-                                              }
-                                            },
-                                            child: const Center(
-                                              child: Text(
-                                                '登録',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                  fontFamily: 'Inter',
-                                                  fontWeight: FontWeight.w400,
-                                                  height: 0,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                      ElevatedButton(
+                        onPressed: getImageFromGallery,
+                        child: Icon(Icons.photo_library),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  IconButton(
+                    //変更保存用
+                      icon: Icon(Icons.save),
+                      onPressed: () async {
+                        print("保存ボタンを押した");
+                        try {
+                          // フォームが有効か確認
+                          if (_formKey.currentState!.validate()) {
+                            _formKey.currentState!.save();
+                            await _setaccount(_mainReference);
+                            // 処理が完了したら画面遷移
+                          }
+                        } catch (e) {
+                          print('保存に失敗しました: $e');
+                        }
+                      }
+                  ),
+                ],
+              )
             ),
           ),
-        ));
+        ),
+      )
+    );
   }
 }
