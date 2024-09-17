@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:secure_sns/view/talk/chat.dart'; // FirestoreChatPage が定義されたファイルをインポート
 
+import '../account/accountpage.dart';
 import '../account/user_auth.dart';
 
 class Chatroom extends StatefulWidget {
@@ -14,9 +15,9 @@ class Chatroom extends StatefulWidget {
 class _ChatroomState extends State<Chatroom> {
   List followers = [];
 
+  // Firebaseからfollowerのリストを取得する
   Future<void> fetchFollowers() async {
     try {
-      // Firebaseからfollowerのリストを取得する
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(userAuth.currentUser!.uid)
@@ -33,21 +34,31 @@ class _ChatroomState extends State<Chatroom> {
     }
   }
 
-  // フォロワーの名前を Firestore から取得
-  Future<String> _fetchFollowerName(String followerId) async {
+  // フォロワーの名前とアイコンを Firestore から取得
+  Future<Map<String,String>> _fetchFollowerData(String followerId) async {
     try {
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(followerId)
           .get();
       if (snapshot.exists) {
-        return snapshot.get('name'); // 'name' フィールドを取得
+        return{
+          'name':snapshot.get('name'),
+          'profilePhotoUrl': snapshot.get('profilePhotoUrl'),
+        };  // 'name' フィールドを取得
       } else {
-        return 'Unknown User'; // ユーザが存在しない場合のデフォルト名
+        return{
+          'name':'Unknown User',
+          'profilePhotoUrl':'',
+        };
+        // ユーザが存在しない場合のデフォルト名
       }
     } catch (e) {
       print("Error fetching follower name: $e");
-      return 'Error User'; // エラー時のデフォルト名
+      return{
+        'name':'Error User',
+        'profilePhotoUrl':'',
+      }; // エラー時のデフォルト名
     }
   }
   //最後にした会話の文を取得
@@ -74,8 +85,8 @@ class _ChatroomState extends State<Chatroom> {
   Widget _buildChatTile(String followerId) {
     String chatId = _getChatId(userAuth.currentUser!.uid, followerId); // チャットIDを生成
 
-    return FutureBuilder<String>(
-      future: _fetchFollowerName(followerId), // フォロワーの名前を取得
+    return FutureBuilder<Map<String, String>>(
+      future: _fetchFollowerData(followerId), // フォロワーの名前とアイコンを取得
       builder: (context, snapshot) {
         //非同期処理
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -87,7 +98,9 @@ class _ChatroomState extends State<Chatroom> {
             title: Text('エラーが発生しました: ${snapshot.error}'),
           );
         } else {
-          String followerName = snapshot.data ?? 'Unknown User'; // フォロワーの名前
+          String followerName = snapshot.data!['name'] ?? 'Unknown User'; // フォロワーの名前
+          final String profilePhotoUrl = snapshot.data!['profilePhotoUrl'] ?? '';
+
           return FutureBuilder<String>(
             future: _fetchChats(chatId),
             builder: (context, chatSnapshot) {
@@ -100,8 +113,10 @@ class _ChatroomState extends State<Chatroom> {
                   title: Text('エラーが発生しました: ${chatSnapshot.error}'),
                 );
               } else {
-                String lastMessage = chatSnapshot.data ?? ''; // 最後のメッセージ
+                // 最後のメッセージ
+                String lastMessage = chatSnapshot.data ?? '';
                 return InkWell(
+                  //room画面遷移
                   onTap: () {
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (context) => FirestoreChatPage(
@@ -115,7 +130,37 @@ class _ChatroomState extends State<Chatroom> {
                       Padding(
                         padding: EdgeInsets.all(8.0),
                         child: ListTile(
-                          leading: CircleAvatar(radius: 30), // ユーザアイコン
+                          // ユーザアイコン
+                          leading: ElevatedButton(
+                            style:ElevatedButton.styleFrom(
+                                shape: CircleBorder(),
+                                padding: EdgeInsets.all(7)
+                            ),
+                            onPressed: () {
+                              //アイコンが押された人のAccountPageに飛ぶ
+                              Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => Accountpage(
+                                  userid: followerId, // フォロワーのIDを渡す
+                                ),
+                              ));
+                            },
+                            child: ClipOval(
+                              //写真を保存していない、またはerrorでempty状態になっている時
+                              child: profilePhotoUrl == "imageurl" ||profilePhotoUrl.isEmpty
+                                  ? Image.asset(
+                                'images/kkrn_icon_user_14.png', // デフォルトのアイコン
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                              )
+                                  : Image.network(
+                                profilePhotoUrl,
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
                           title: Text(
                             followerName, // フォロワーの名前をタイトルとして表示
                             style: TextStyle(

@@ -24,9 +24,7 @@ class _TimelineState extends State<Timeline> {
     super.initState();
     fetchPosts();
   }
-
   List<Post> postlist= [];
-
   //postの取得
   Future<void> fetchPosts() async{
     List<Post> loadedPosts = [];
@@ -74,22 +72,32 @@ class _TimelineState extends State<Timeline> {
     }
   }
 
+
   //postに必要なアカウント情報を取得
-  Future<String> fetchAccountname(String userid) async {
+  Future<Map<String, String>> fetchAccountData(String userid) async {
     try {
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
           .collection('users').doc(userid)
           .get();
       if (snapshot.exists) {
         // username と nameを返す
-        return snapshot.get('name')+' @'+snapshot.get('username');
+        return {
+          'name':snapshot.get('name')+' @'+snapshot.get('username'),
+          'profilePhotoUrl': snapshot.get('profilePhotoUrl'),
+        };
       } else {
         print('can not get username ');
-        return '';
+        return {
+          'name': '',
+          'profilePhotoUrl': '',
+        };
       }
     } catch (e) {
       print('Failed to fetch account data: $e');
-      return '';
+      return {
+        'name': '',
+        'profilePhotoUrl': '',
+      };
     }
   }
 
@@ -122,7 +130,6 @@ class _TimelineState extends State<Timeline> {
         title: Text("タイムライン"),
         centerTitle: true,
       ),
-
       //設定用のdrawer
       drawer: Drawer(
         child: ListView(
@@ -190,8 +197,8 @@ class _TimelineState extends State<Timeline> {
         child: ListView.builder(
             itemCount: postlist.length,
             itemBuilder: (BuildContext context,int index){
-              return FutureBuilder(
-                future: fetchAccountname(postlist[index].postAccount),
+              return FutureBuilder<Map<String, String>>(
+                future: fetchAccountData(postlist[index].postAccount),
                 builder: (context ,snapshot){
                   //読み込み終わってなかったらぐるぐる
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -199,6 +206,8 @@ class _TimelineState extends State<Timeline> {
                   } else if (snapshot.hasError) {
                     return Text("Error");
                   }else{
+                    final String name = snapshot.data!['name'] ?? '';
+                    final String profilePhotoUrl = snapshot.data!['profilePhotoUrl'] ?? '';
                     return Container(
                       color: Colors.white,
                       child: Column(
@@ -232,16 +241,25 @@ class _TimelineState extends State<Timeline> {
                                             ));
                                           },
                                           child: ClipOval(
-                                              child: Image(
-                                                width: 40,
-                                                image: AssetImage('images/testcat.jpg'),
-                                                fit: BoxFit.contain,
-                                              )
+                                            //写真を保存していない、またはerrorでempty状態になっている時
+                                            child: profilePhotoUrl == "imageurl" ||profilePhotoUrl.isEmpty
+                                                ? Image.asset(
+                                              'images/kkrn_icon_user_14.png', // デフォルトのアイコン
+                                              width: 40,
+                                              height: 40,
+                                              fit: BoxFit.cover,
+                                            )
+                                                : Image.network(
+                                              profilePhotoUrl,
+                                              width: 40,
+                                              height: 40,
+                                              fit: BoxFit.cover,
+                                            ),
                                           ),
                                         ),
                                         SizedBox(width: 10),
                                         // username と nameを表示
-                                        Text(snapshot.data ?? ''),
+                                        Text(name),
                                         SizedBox(width: 10),
                                       ],
                                     ),
@@ -292,7 +310,6 @@ class _TimelineState extends State<Timeline> {
                                           // 画像が存在する場合のみ表示
                                           if (postlist[index].imagePath!="imageurl")
                                             Image.network(postlist[index].imagePath),
-
                                         ]
                                     ),
                                     onTap:(){

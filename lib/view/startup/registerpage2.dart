@@ -21,7 +21,6 @@ class _Registerpage2State extends State<Registerpage2> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   String name = "";
   String username = "";
-  String bio = "";
 
   TextEditingController _nameController = TextEditingController();
   TextEditingController _usernameController = TextEditingController();
@@ -59,11 +58,12 @@ class _Registerpage2State extends State<Registerpage2> {
       FirebaseStorage storage = FirebaseStorage.instance;
       String imageUrl;
       if(_image==null){
+        //写真がない場合 -> url をimageurlとして保存
         print("image is null");
         imageUrl='imageurl';
       }
       else{
-        print("image is not null");
+        //写真がない場合 ->storageの url をて保存
         TaskSnapshot snapshot = await storage
             .ref("users/${userAuth.currentUser!.uid}/${_mainReference.id}.png")
             .putFile(_image!);
@@ -73,6 +73,7 @@ class _Registerpage2State extends State<Registerpage2> {
       await _mainReference.set({
         'name': _newAccount.name,
         'username': _newAccount.username,
+        'description':"",
         'profilePhotoUrl':imageUrl,
         'followers': [],
       });

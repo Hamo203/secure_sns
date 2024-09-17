@@ -78,11 +78,6 @@ class _PostpageState extends State<Postpage> {
     }
   }
 
-
-
-
-
-
   @override
   Widget build(BuildContext context) {
     DocumentReference _mainReference = FirebaseFirestore.instance
@@ -93,7 +88,6 @@ class _PostpageState extends State<Postpage> {
       appBar: AppBar(
         title: Text("新規投稿"),
         actions: <Widget>[
-
           IconButton(
             //snsにシェア用
             icon: Icon(Icons.save),
@@ -103,19 +97,16 @@ class _PostpageState extends State<Postpage> {
                   // フォームが有効か確認
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
-
                     // 画像がある場合は画像をアップロードしてからデータを保存
                     if (_image != null) {
-                      print("写真あり");
                       await _upload(_mainReference);  // 非同期でアップロードを待つ
                     } else {
                       // 画像がない場合はimagePathをデフォルト値で保存
-                      print("写真なし");
                       await _mainReference.set({
                         'createdTime': _post.createdTime,
                         'description': _post.description,
                         'favoriteCount': _post.favoriteCount,
-                        'imagePath': 'imageurl',  // デフォルトのURLや空の値を入れる
+                        'imagePath': 'imageurl',  // デフォルトのURL　-> imageurl
                         'postAccount': _post.postAccount,
                         'retweetCount': _post.retweetCount,
                       });
@@ -150,9 +141,6 @@ class _PostpageState extends State<Postpage> {
             key: _formKey,
             child: Column(
               children: [
-                CircleAvatar(
-                    radius:30
-                ),
                 TextFormField(
                   decoration: InputDecoration(
                     hintText: '入力して'
