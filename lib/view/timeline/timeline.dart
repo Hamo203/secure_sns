@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:secure_sns/view/account/accountpage.dart';
 
@@ -19,12 +23,20 @@ class Timeline extends StatefulWidget {
 }
 
 class _TimelineState extends State<Timeline> {
+  //読み込んだPostをリスト形式で保存するためのもの
+  List<Post> postlist= [];
+
+  File? _image ;
+  final ImagePicker picker = ImagePicker();
+  final Post _comment = Post(createdTime: DateTime.now(),postAccount: userAuth.currentUser!.uid);
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   @override
   void initState() {
     super.initState();
     fetchPosts();
   }
-  List<Post> postlist= [];
+
   //postの取得
   Future<void> fetchPosts() async{
     List<Post> loadedPosts = [];
@@ -72,6 +84,62 @@ class _TimelineState extends State<Timeline> {
     }
   }
 
+  Future captureImage() async {
+    // Capture a photo.
+    final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+    if (photo == null) {
+      print('No image selected');
+      return;
+    }
+
+    setState(() {
+      _image = File(photo.path);
+    });
+  }
+
+  Future getImageFromGallery() async{
+    // Pick an image.
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) {
+      print('No image selected');
+      return;
+    }
+
+    setState(() {
+      _image = File(image.path);
+    });
+  }
+
+  Future<void> _upload(DocumentReference _mainReference) async {
+    if (_image == null) {
+      print("Error: Image is null");
+      return;
+    }
+    try {
+      FirebaseStorage storage = FirebaseStorage.instance;
+      String imageUrl;
+
+      TaskSnapshot snapshot = await storage
+          .ref("users/${userAuth.currentUser!.uid}/posts/{post-id}/comments/${_mainReference.id}.png")
+          .putFile(_image!);
+
+      imageUrl = await snapshot.ref.getDownloadURL();
+      _formKey.currentState!.save();
+
+      await _mainReference.set({
+        'createdTime': _comment.createdTime,
+        'description': _comment.description,
+        'favoriteCount': _comment.favoriteCount,
+        'imagePath': imageUrl,
+        'postAccount': _comment.postAccount,
+        'retweetCount': _comment.retweetCount,
+      });
+      print("保存が完了した");
+    } catch (e) {
+      print('アップロード中にエラーが発生しました: $e');
+    }
+  }
+
 
   //postに必要なアカウント情報を取得
   Future<Map<String, String>> fetchAccountData(String userid) async {
@@ -101,6 +169,7 @@ class _TimelineState extends State<Timeline> {
     }
   }
 
+  //Postを削除
   Future<void> _deletePost(String postId, int index) async {
     try {
       // Firestoreから削除
@@ -134,7 +203,7 @@ class _TimelineState extends State<Timeline> {
       drawer: Drawer(
         child: ListView(
           children: <Widget>[
-            SizedBox(
+            const SizedBox(
               height: 80,
               child: DrawerHeader(
                 child: Text('設定とアクティビティ'),
@@ -193,6 +262,7 @@ class _TimelineState extends State<Timeline> {
         ),
       ),
 
+      //タイムラインのリスト
       body: Center(
         child: ListView.builder(
             itemCount: postlist.length,
@@ -208,6 +278,12 @@ class _TimelineState extends State<Timeline> {
                   }else{
                     final String name = snapshot.data!['name'] ?? '';
                     final String profilePhotoUrl = snapshot.data!['profilePhotoUrl'] ?? '';
+
+                    DocumentReference _mainReference = FirebaseFirestore.instance
+                        .collection('users').doc(postlist[index].postAccount)
+                        .collection('posts').doc(postlist[index].postid).collection('comments')
+                        .doc();
+
                     return Container(
                       color: Colors.white,
                       child: Column(
@@ -224,6 +300,7 @@ class _TimelineState extends State<Timeline> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
+                                    //アイコンとユーザネーム
                                     Row(
                                       children: [
                                         //アイコンボタン
@@ -263,8 +340,8 @@ class _TimelineState extends State<Timeline> {
                                         SizedBox(width: 10),
                                       ],
                                     ),
+                                    //投稿削除用のボタン
                                     IconButton(
-                                      //投稿削除用のボタン
                                       icon: const Icon(Icons.delete),
                                       onPressed: () async {
                                         // 確認ダイアログを表示
@@ -300,8 +377,8 @@ class _TimelineState extends State<Timeline> {
                                     ),
                                   ],
                                 ),
+                                //投稿内容
                                 ListTile(
-                                  //投稿内容
                                     title:Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children:[
@@ -319,6 +396,7 @@ class _TimelineState extends State<Timeline> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
+                                    //時間、いいね、コメント
                                     Row(
                                       children: [
                                         // 時間の表示
@@ -329,6 +407,107 @@ class _TimelineState extends State<Timeline> {
                                           size: 30,
                                           likeCount: postlist[index].favoriteCount,
                                           isLiked: postlist[index].buttonPush,
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.comment),
+                                          onPressed: () async{
+                                            // 確認ダイアログを表示
+                                            bool? confirm = await showDialog(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: Text("返信コメント"),
+                                                content:
+                                                SingleChildScrollView(
+                                                  child: Column(
+                                                    children: [
+                                                      Form(
+                                                        key:_formKey,
+                                                        child: TextFormField(
+                                                          decoration: InputDecoration(
+                                                              hintText: '入力して'
+                                                          ),
+                                                          onSaved: (String? value) {
+                                                            _comment.description = value! ?? '';
+                                                          },
+                                                          initialValue: _comment.description,
+                                                        ),
+                                                      ),
+                                                      if (_image != null)
+                                                        Container(
+                                                          // AlertDialogの幅の80%
+                                                          width: MediaQuery.of(context).size.width * 0.8,
+                                                          child: Image.file(
+                                                            _image!,
+                                                            // 画像を幅に合わせて拡縮
+                                                            fit: BoxFit.cover,
+                                                          ),
+                                                        ),
+                                                      //写真入力用ボタン
+                                                      Row(
+                                                        children: [
+                                                          ElevatedButton(
+                                                            onPressed: captureImage,
+                                                            child: Icon(Icons.add_a_photo),
+                                                          ),
+                                                          ElevatedButton(
+                                                            onPressed: getImageFromGallery,
+                                                            child: Icon(Icons.photo_library),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    child: Text("キャンセル"),
+                                                    onPressed: () {
+                                                      Navigator.of(context).pop(
+                                                          false); // キャンセルを返す
+                                                    },
+                                                  ),
+                                                  TextButton(
+                                                    child: Text("投稿"),
+                                                    onPressed: () {
+                                                      Navigator.of(context).pop(
+                                                          true); // 削除を返す
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            if (confirm == true) {
+                                             print("投稿");
+                                             try {
+                                               // フォームが有効か確認
+                                               if (_formKey.currentState!.validate()) {
+                                                 _formKey.currentState!.save();
+                                                 // 画像がある場合は画像をアップロードしてからデータを保存
+                                                 if (_image != null) {
+                                                   await _upload(_mainReference);  // 非同期でアップロードを待つ
+                                                 } else {
+                                                   // 画像がない場合はimagePathをデフォルト値で保存
+                                                   await _mainReference.set({
+                                                     'createdTime': _comment.createdTime,
+                                                     'description': _comment.description,
+                                                     'favoriteCount': _comment.favoriteCount,
+                                                     'imagePath': 'imageurl',  // デフォルトのURL　-> imageurl
+                                                     'postAccount': _comment.postAccount,
+                                                     'retweetCount': _comment.retweetCount,
+                                                   });
+                                                 }
+                                                 print('保存に成功しました: ');
+
+                                               }
+                                             } catch (e) {
+                                               print('保存に失敗しました: $e');
+                                             }
+                                            }
+                                            //ダイアログが閉じられたらリセット
+                                            setState(() {
+                                              _image=null;
+                                            });
+                                          },
                                         ),
                                       ],
                                     ),
