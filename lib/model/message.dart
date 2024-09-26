@@ -1,6 +1,6 @@
 class Message{
-  int id;
-  int messengerid;
-  String message;
-  Message({this.id=-1,this.messengerid=-1,this.message=''});
+  int chatid;
+  int userid;
+  int partnerid;
+  Message({this.chatid=-1,this.userid=-1,this.partnerid=-1});
 }

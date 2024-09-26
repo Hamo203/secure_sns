@@ -8,12 +8,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:secure_sns/view/account/accountpage.dart';
 
+import '../../api/natural_language_service.dart';
 import '../../model/account.dart';
 import '../../model/post.dart';
 import 'package:like_button/like_button.dart';
 
 import '../account/user_auth.dart';
 import '../startup/login.dart';
+import 'comment.dart';
 
 class Timeline extends StatefulWidget {
   const Timeline({super.key});
@@ -30,6 +32,7 @@ class _TimelineState extends State<Timeline> {
   final ImagePicker picker = ImagePicker();
   final Post _comment = Post(createdTime: DateTime.now(),postAccount: userAuth.currentUser!.uid);
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  String _result = '';
 
   @override
   void initState() {
@@ -84,6 +87,7 @@ class _TimelineState extends State<Timeline> {
     }
   }
 
+  //写真を撮る
   Future captureImage() async {
     // Capture a photo.
     final XFile? photo = await picker.pickImage(source: ImageSource.camera);
@@ -97,6 +101,7 @@ class _TimelineState extends State<Timeline> {
     });
   }
 
+  //ギャラリーから写真を選択
   Future getImageFromGallery() async{
     // Pick an image.
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
@@ -110,36 +115,176 @@ class _TimelineState extends State<Timeline> {
     });
   }
 
-  Future<void> _upload(DocumentReference _mainReference) async {
-    if (_image == null) {
-      print("Error: Image is null");
-      return;
+  //コメントを分析する
+  Future<bool> _analyzeText(String message) async {
+    double score=1;
+    double magnitude=1;
+
+    // テキストが入力されていないとき
+    if (message.isEmpty) {
+      setState(() {
+        _result = 'Please enter some text';
+      });
+      return false;
     }
+
+    // Natural Language APIを呼び出して解析
+    final analysisResult = await NaturalLanguageService().analyzeSentiment(message);
+    if(analysisResult!=null){
+      setState(() {
+        score = analysisResult['score']!;
+        magnitude = analysisResult['magnitude']!;
+        _result='Score: $score, Magnitude: $magnitude';
+      });
+    }
+
+    print("result: $_result");//デバッグ用
+
+    //scoreが1より小さいかつmagnitudeが1より小さかったらdialogを出す
+    if(score<1 && magnitude < 1){
+      return await _showAlertDialog(score, magnitude);
+    }else{
+      //点が高かったらtrue
+      return true;
+    }
+
+  }
+
+  //分析の結果値がまずかったらdialogを出す
+  Future<bool> _showAlertDialog(double score, double magnitude) {
+    print("score:$score, magnitude:$magnitude");
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // 高さをコンテンツに合わせる
+              children: [
+                // コンテンツ部分
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFf7f7f7),
+                    border: Border(
+                      bottom: BorderSide(
+                        width: 0.5,
+                        color: Color.fromRGBO(0, 0, 0, 0.4),
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text("本当に送ってもだいじょうぶですか？"),
+                      const SizedBox(height: 16.0),
+                      Image.asset(
+                        'images/face/bully.png',
+                        width: 150,
+                        height: 150,
+                      ),
+                    ],
+                  ),
+                ),
+                // ボタン部分
+                Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFf7f7f7),
+                  ),
+                  width: double.infinity,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      //キャンセルボタン
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop(false);
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.black, backgroundColor: Color(0xFFf9e4c8),
+                          ),
+                          child: const Text("キャンセル"),
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 40,
+                        color: Colors.grey,
+                      ),
+                      //送信ボタン
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop(true);
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.black, backgroundColor: Color(0xFFc5d8e7),
+                          ),
+                          child: const Text("送信"),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((value) => value ?? false);
+  }
+
+
+  //コメントのuploadをおこなう
+  Future<void> _upload(DocumentReference _mainReference ,String userid,String postid) async {
     try {
       FirebaseStorage storage = FirebaseStorage.instance;
       String imageUrl;
 
-      TaskSnapshot snapshot = await storage
-          .ref("users/${userAuth.currentUser!.uid}/posts/{post-id}/comments/${_mainReference.id}.png")
-          .putFile(_image!);
+      if(_image!=null){
+        TaskSnapshot snapshot = await storage
+            .ref("users/${userid}/posts/${postid}/comments/${_mainReference.id}.png")
+            .putFile(_image!);
+        imageUrl = await snapshot.ref.getDownloadURL();
+      }else{
+        imageUrl="imageurl";
+      }
+      print("保存します");
+      print(_formKey);
+      // フォームの内容を保存
+      if (_formKey.currentState != null) {
+        _formKey.currentState!.save();
 
-      imageUrl = await snapshot.ref.getDownloadURL();
-      _formKey.currentState!.save();
+        bool analysisPassed = await _analyzeText(_comment.description);
 
-      await _mainReference.set({
-        'createdTime': _comment.createdTime,
-        'description': _comment.description,
-        'favoriteCount': _comment.favoriteCount,
-        'imagePath': imageUrl,
-        'postAccount': _comment.postAccount,
-        'retweetCount': _comment.retweetCount,
-      });
-      print("保存が完了した");
+        if (!analysisPassed) {
+          print("analysis doesn't passed");
+          return;
+        }
+
+        // Firestoreにデータを保存
+        await _mainReference.set({
+          'createdTime': _comment.createdTime,
+          'description': _comment.description,
+          'favoriteCount': _comment.favoriteCount,
+          'imagePath': imageUrl,  // アップロードされた画像のURL
+          'postAccount': _comment.postAccount,
+          'retweetCount': _comment.retweetCount,
+        });
+
+        print("保存が完了しました");
+      } else {
+        print("Error: フォームの状態が無効です");
+      }
     } catch (e) {
       print('アップロード中にエラーが発生しました: $e');
     }
   }
-
 
   //postに必要なアカウント情報を取得
   Future<Map<String, String>> fetchAccountData(String userid) async {
@@ -261,7 +406,6 @@ class _TimelineState extends State<Timeline> {
           ],
         ),
       ),
-
       //タイムラインのリスト
       body: Center(
         child: ListView.builder(
@@ -290,7 +434,7 @@ class _TimelineState extends State<Timeline> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 5,
                             ),
@@ -355,21 +499,18 @@ class _TimelineState extends State<Timeline> {
                                               TextButton(
                                                 child: Text("キャンセル"),
                                                 onPressed: () {
-                                                  Navigator.of(context).pop(
-                                                      false); // キャンセルを返す
+                                                  Navigator.of(context).pop(false); // キャンセルを返す
                                                 },
                                               ),
                                               TextButton(
                                                 child: Text("削除"),
                                                 onPressed: () {
-                                                  Navigator.of(context).pop(
-                                                      true); // 削除を返す
+                                                  Navigator.of(context).pop(true); // 削除を返す
                                                 },
                                               ),
                                             ],
                                           ),
                                         );
-
                                         if (confirm == true) {
                                           _deletePost(postlist[index].postid!, index);
                                         }
@@ -379,19 +520,27 @@ class _TimelineState extends State<Timeline> {
                                 ),
                                 //投稿内容
                                 ListTile(
-                                    title:Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children:[
-                                          //投稿内容
-                                          Text(postlist[index].description),
-                                          // 画像が存在する場合のみ表示
-                                          if (postlist[index].imagePath!="imageurl")
-                                            Image.network(postlist[index].imagePath),
-                                        ]
-                                    ),
-                                    onTap:(){
-                                      print("押された");
-                                    }
+                                  title:Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children:[
+                                        //投稿内容
+                                        Text(postlist[index].description),
+                                        // 画像が存在する場合のみ表示
+                                        if (postlist[index].imagePath!="imageurl")
+                                          Image.network(postlist[index].imagePath),
+                                      ]
+                                  ),
+                                  //投稿を押したらコメント欄に遷移する
+                                  onTap:(){
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => CommentPage(
+                                          userid: postlist[index].postAccount,
+                                          postid: postlist[index].postid!,
+                                        ),
+                                      ),
+                                    );
+                                  }
                                 ),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -410,105 +559,102 @@ class _TimelineState extends State<Timeline> {
                                         ),
                                         IconButton(
                                           icon: const Icon(Icons.comment),
-                                          onPressed: () async{
-                                            // 確認ダイアログを表示
+                                          onPressed: () async {
+                                            // コメントの入力フォームと画像をリセット
+                                            // リセットはダイアログを開く前ではなく、必要なときに行う
+                                            setState(() {
+                                              _comment.description = ''; // コメントの内容をリセット（必要に応じて）
+                                              _image = null; // 画像をリセット（必要に応じて）
+                                            });
+
+                                            // コメント入力ダイアログを表示
                                             bool? confirm = await showDialog(
                                               context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: Text("返信コメント"),
-                                                content:
-                                                SingleChildScrollView(
-                                                  child: Column(
-                                                    children: [
-                                                      Form(
-                                                        key:_formKey,
-                                                        child: TextFormField(
-                                                          decoration: InputDecoration(
-                                                              hintText: '入力して'
-                                                          ),
-                                                          onSaved: (String? value) {
-                                                            _comment.description = value! ?? '';
-                                                          },
-                                                          initialValue: _comment.description,
-                                                        ),
-                                                      ),
-                                                      if (_image != null)
-                                                        Container(
-                                                          // AlertDialogの幅の80%
-                                                          width: MediaQuery.of(context).size.width * 0.8,
-                                                          child: Image.file(
-                                                            _image!,
-                                                            // 画像を幅に合わせて拡縮
-                                                            fit: BoxFit.cover,
-                                                          ),
-                                                        ),
-                                                      //写真入力用ボタン
-                                                      Row(
+                                              builder: (context) => StatefulBuilder(
+                                                builder: (context, setState) {
+                                                  return AlertDialog(
+                                                    title: Text("返信コメント"),
+                                                    content: SingleChildScrollView(
+                                                      child: Column(
                                                         children: [
-                                                          ElevatedButton(
-                                                            onPressed: captureImage,
-                                                            child: Icon(Icons.add_a_photo),
+                                                          Form(
+                                                            key: _formKey,
+                                                            child: TextFormField(
+                                                              decoration: InputDecoration(hintText: '入力して'),
+                                                              onSaved: (String? value) {
+                                                                _comment.description = value ?? '';
+                                                              },
+                                                              initialValue: _comment.description, // フォームの状態を保持
+                                                            ),
                                                           ),
-                                                          ElevatedButton(
-                                                            onPressed: getImageFromGallery,
-                                                            child: Icon(Icons.photo_library),
+                                                          if (_image != null)
+                                                            Container(
+                                                              // AlertDialogの幅の80%
+                                                              width: MediaQuery.of(context).size.width * 0.8,
+                                                              child: Image.file(
+                                                                _image!,
+                                                                // 画像を幅に合わせて拡縮
+                                                                fit: BoxFit.cover,
+                                                              ),
+                                                            ),
+                                                          // ダイアログ中の写真入力用ボタン
+                                                          Row(
+                                                            children: [
+                                                              ElevatedButton(
+                                                                onPressed: () async {
+                                                                  await captureImage();
+                                                                  setState(() {}); // ダイアログ内の状態を更新するためにsetStateを呼び出す
+                                                                },
+                                                                child: Icon(Icons.add_a_photo),
+                                                              ),
+                                                              ElevatedButton(
+                                                                onPressed: () async {
+                                                                  await getImageFromGallery();
+                                                                  setState(() {}); // ダイアログ内の状態を更新
+                                                                },
+                                                                child: Icon(Icons.photo_library),
+                                                              ),
+                                                            ],
                                                           ),
                                                         ],
                                                       ),
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        child: Text("キャンセル"),
+                                                        onPressed: () {
+                                                          Navigator.of(context).pop(false); // キャンセルを返す
+                                                        },
+                                                      ),
+                                                      TextButton(
+                                                        child: Text("投稿"),
+                                                        onPressed: () {
+                                                          Navigator.of(context).pop(true); // 投稿を返す
+                                                        },
+                                                      ),
                                                     ],
-                                                  ),
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    child: Text("キャンセル"),
-                                                    onPressed: () {
-                                                      Navigator.of(context).pop(
-                                                          false); // キャンセルを返す
-                                                    },
-                                                  ),
-                                                  TextButton(
-                                                    child: Text("投稿"),
-                                                    onPressed: () {
-                                                      Navigator.of(context).pop(
-                                                          true); // 削除を返す
-                                                    },
-                                                  ),
-                                                ],
+                                                  );
+                                                },
                                               ),
                                             );
-                                            if (confirm == true) {
-                                             print("投稿");
-                                             try {
-                                               // フォームが有効か確認
-                                               if (_formKey.currentState!.validate()) {
-                                                 _formKey.currentState!.save();
-                                                 // 画像がある場合は画像をアップロードしてからデータを保存
-                                                 if (_image != null) {
-                                                   await _upload(_mainReference);  // 非同期でアップロードを待つ
-                                                 } else {
-                                                   // 画像がない場合はimagePathをデフォルト値で保存
-                                                   await _mainReference.set({
-                                                     'createdTime': _comment.createdTime,
-                                                     'description': _comment.description,
-                                                     'favoriteCount': _comment.favoriteCount,
-                                                     'imagePath': 'imageurl',  // デフォルトのURL　-> imageurl
-                                                     'postAccount': _comment.postAccount,
-                                                     'retweetCount': _comment.retweetCount,
-                                                   });
-                                                 }
-                                                 print('保存に成功しました: ');
 
-                                               }
-                                             } catch (e) {
-                                               print('保存に失敗しました: $e');
-                                             }
+                                            if (confirm == true) {
+                                              print("投稿");
+                                              try {
+                                                // フォームが有効か確認
+                                                if (_formKey.currentState!.validate()) {
+                                                  _formKey.currentState!.save();
+                                                  await _upload(_mainReference, postlist[index].postAccount, postlist[index].postid); // 非同期でアップロードを待つ
+
+                                                  print('保存に成功しました');
+                                                }
+                                              } catch (e) {
+                                                print('保存に失敗しました: $e');
+                                              }
                                             }
-                                            //ダイアログが閉じられたらリセット
-                                            setState(() {
-                                              _image=null;
-                                            });
                                           },
                                         ),
+
                                       ],
                                     ),
                                   ],

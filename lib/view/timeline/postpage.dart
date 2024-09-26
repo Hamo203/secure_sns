@@ -25,6 +25,7 @@ class _PostpageState extends State<Postpage> {
   final ImagePicker picker = ImagePicker();
   String _result = '';
 
+  //写真を取る
   Future captureImage() async {
     // Capture a photo.
     final XFile? photo = await picker.pickImage(source: ImageSource.camera);
@@ -37,6 +38,7 @@ class _PostpageState extends State<Postpage> {
     });
   }
 
+  //ギャラリーから写真を撮ってくる
   Future getImageFromGallery() async{
     // Pick an image.
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
@@ -50,6 +52,7 @@ class _PostpageState extends State<Postpage> {
     });
   }
 
+  //uploadする
   Future<void> _upload(DocumentReference _mainReference) async {
     if (_image == null) {
       print("Error: Image is null");
@@ -80,10 +83,10 @@ class _PostpageState extends State<Postpage> {
     }
   }
 
+  //postを分析する
   Future<bool> _analyzeText(String message) async {
     double score=1;
     double magnitude=1;
-    bool result;
 
     // テキストが入力されていないとき
     if (message.isEmpty) {
@@ -103,8 +106,9 @@ class _PostpageState extends State<Postpage> {
       });
     }
 
-    print("result: $_result");
+    print("result: $_result");//デバッグ用
 
+    //scoreが1より小さいかつmagnitudeが1より小さかったらdialogを出す
     if(score<1 && magnitude < 1){
       return await _showAlertDialog(score, magnitude);
     }else{
@@ -114,6 +118,7 @@ class _PostpageState extends State<Postpage> {
 
   }
 
+  //分析の結果値がまずかったらdialogを出す
   Future<bool> _showAlertDialog(double score, double magnitude) {
     print("score:$score, magnitude:$magnitude");
     return showDialog<bool>(
@@ -273,6 +278,7 @@ class _PostpageState extends State<Postpage> {
             key: _formKey,
             child: Column(
               children: [
+                //入力欄
                 TextFormField(
                   decoration: InputDecoration(
                     hintText: '入力して'
@@ -293,13 +299,13 @@ class _PostpageState extends State<Postpage> {
                   ),
                 ),
                 SizedBox(height: 20,),
+                //写真取る・選択する
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ElevatedButton(
                       onPressed: captureImage,
                       child: Icon(Icons.add_a_photo),
-
                     ),
                     ElevatedButton(
                       onPressed: getImageFromGallery,
