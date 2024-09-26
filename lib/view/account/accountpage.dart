@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:secure_sns/view/account/account_setting.dart';
 import 'package:secure_sns/view/account/user_auth.dart';
+import 'package:secure_sns/view/timeline/comment.dart';
 import '../../model/account.dart';
 import '../../model/post.dart';
 import 'package:like_button/like_button.dart';
@@ -375,8 +376,16 @@ class _AccountpageState extends State<Accountpage> {
 
                                   ]
                                 ),
+                                //投稿が押されたらコメントページに飛ぶ
                                 onTap:(){
-                                  print("押された");
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => CommentPage(
+                                        userid: postlist[index].postAccount,
+                                        postid: postlist[index].postid!,
+                                      ),
+                                    ),
+                                  );
                                 }
                               ),
                               Row(
