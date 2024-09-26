@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../api/natural_language_service.dart';
 import '../../model/post.dart';
 import '../../navigation.dart';
 import '../account/user_auth.dart';
@@ -22,6 +23,7 @@ class _PostpageState extends State<Postpage> {
 
   File? _image ;
   final ImagePicker picker = ImagePicker();
+  String _result = '';
 
   Future captureImage() async {
     // Capture a photo.
@@ -78,12 +80,135 @@ class _PostpageState extends State<Postpage> {
     }
   }
 
+  Future<bool> _analyzeText(String message) async {
+    double score=1;
+    double magnitude=1;
+    bool result;
+
+    // テキストが入力されていないとき
+    if (message.isEmpty) {
+      setState(() {
+        _result = 'Please enter some text';
+      });
+      return false;
+    }
+
+    // Natural Language APIを呼び出して解析
+    final analysisResult = await NaturalLanguageService().analyzeSentiment(message);
+    if(analysisResult!=null){
+      setState(() {
+        score = analysisResult['score']!;
+        magnitude = analysisResult['magnitude']!;
+        _result='Score: $score, Magnitude: $magnitude';
+      });
+    }
+
+    print("result: $_result");
+
+    if(score<1 && magnitude < 1){
+      return await _showAlertDialog(score, magnitude);
+    }else{
+      //点が高かったらtrue
+      return true;
+    }
+
+  }
+
+  Future<bool> _showAlertDialog(double score, double magnitude) {
+    print("score:$score, magnitude:$magnitude");
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // 高さをコンテンツに合わせる
+              children: [
+                // コンテンツ部分
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFf7f7f7),
+                    border: Border(
+                      bottom: BorderSide(
+                        width: 0.5,
+                        color: Color.fromRGBO(0, 0, 0, 0.4),
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text("本当に送ってもだいじょうぶですか？"),
+                      const SizedBox(height: 16.0),
+                      Image.asset(
+                        'images/face/bully.png',
+                        width: 150,
+                        height: 150,
+                      ),
+                    ],
+                  ),
+                ),
+                // ボタン部分
+                Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFf7f7f7),
+                  ),
+                  width: double.infinity,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      //キャンセルボタン
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop(false);
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.black, backgroundColor: Color(0xFFf9e4c8),
+                          ),
+                          child: const Text("キャンセル"),
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 40,
+                        color: Colors.grey,
+                      ),
+                      //送信ボタン
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop(true);
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.black, backgroundColor: Color(0xFFc5d8e7),
+                          ),
+                          child: const Text("送信"),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((value) => value ?? false);
+  }
+
   @override
   Widget build(BuildContext context) {
     DocumentReference _mainReference = FirebaseFirestore.instance
         .collection('users').doc(userAuth.currentUser!.uid)
         .collection('posts')
         .doc();
+
     return Scaffold(
       appBar: AppBar(
         title: Text("新規投稿"),
@@ -97,6 +222,14 @@ class _PostpageState extends State<Postpage> {
                   // フォームが有効か確認
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
+
+                    bool analysisPassed = await _analyzeText(_post.description);
+
+                    if (!analysisPassed) {
+                      print("analysis doesn't passed");
+                      return;
+                    }
+
                     // 画像がある場合は画像をアップロードしてからデータを保存
                     if (_image != null) {
                       await _upload(_mainReference);  // 非同期でアップロードを待つ
@@ -123,7 +256,6 @@ class _PostpageState extends State<Postpage> {
                   print('保存に失敗しました: $e');
                 }
               }
-
           ),
           IconButton(
             //snsにシェア用
@@ -150,11 +282,19 @@ class _PostpageState extends State<Postpage> {
                   },
                   initialValue: _post.description,
                 ),
-
+                SizedBox(height: 20,),
                 _image==null
                 ? Text('')
-                :Image.file(_image!),
+                :Container(
+                  width: MediaQuery.of(context).size.width * 0.6, // 画面の60%の幅に設定
+                  child: Image.file(
+                    _image!,
+                    fit: BoxFit.cover, // 画像のサイズを調整
+                  ),
+                ),
+                SizedBox(height: 20,),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ElevatedButton(
                       onPressed: captureImage,
@@ -167,7 +307,6 @@ class _PostpageState extends State<Postpage> {
                     ),
                   ],
                 ),
-
               ],
             ),
           ),
