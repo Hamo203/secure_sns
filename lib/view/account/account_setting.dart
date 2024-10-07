@@ -17,6 +17,7 @@ class _AccountSettingState extends State<AccountSetting> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final Account _account = Account();
 
+  //TextField Widgetの入力文字や選択文字の取得・変更ができる
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -69,12 +70,25 @@ class _AccountSettingState extends State<AccountSetting> {
     }
   }
 
+  //borderの型
+  OutlineInputBorder _buildOutlineInputBorder({required Color color, required double width}) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(15),
+      borderSide: BorderSide(
+        color: color,
+        width: width,
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     //読み込みたいドキュメントを取得
     DocumentReference _mainReference = FirebaseFirestore.instance
         .collection('users')
         .doc(userAuth.currentUser!.uid);
+
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
@@ -86,13 +100,13 @@ class _AccountSettingState extends State<AccountSetting> {
             child: Column(
               children: [
                 Container(
-                  width: screenWidth,
-                  height: screenHeight,
+                  width: screenWidth, height: screenHeight,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(color: Colors.white),
                   child: Column(
                     children: [
                       SizedBox(height: screenHeight * 0.05),
+                      //アカウント写真選択ボタン
                       ElevatedButton(
                         style:ElevatedButton.styleFrom(
                             shape: CircleBorder(),
@@ -107,21 +121,15 @@ class _AccountSettingState extends State<AccountSetting> {
                         },
                         child:  ClipOval(
                           child: _account.profilePhotoUrl == "imageurl" || _account.profilePhotoUrl.isEmpty
-                              ? Image.asset(
-                            'images/kkrn_icon_user_14.png',  // デフォルトのアイコン
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          )
-                              : Image.network(
-                            _account.profilePhotoUrl,  // ストレージの画像
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
+                            ? Image.asset('images/kkrn_icon_user_14.png',  // デフォルトのアイコン
+                            width: 80, height: 80, fit: BoxFit.cover,)
+                            : Image.network(_account.profilePhotoUrl,  // ストレージの画像
+                            width: 80, height: 80, fit: BoxFit.cover,
+                            ),
                         ),
                       ),
                       SizedBox(height: screenHeight * 0.05),
+                      //名前入力
                       TextFormField(
                         controller: _nameController,
                         inputFormatters: [
@@ -132,51 +140,21 @@ class _AccountSettingState extends State<AccountSetting> {
                           labelText: '名前を入力',
                           filled: true,
                           fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Color(0xFFF9E4C8),
-                              width: 3,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Color(0xFFF9E4C8),
-                              width: 3,
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Colors.red,
-                              width: 3,
-                            ),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Colors.red,
-                              width: 3,
-                            ),
-                          ),
+                          border: _buildOutlineInputBorder(color: Colors.transparent, width: 0), // default border
+                          enabledBorder: _buildOutlineInputBorder(color: Color(0xFFF9E4C8), width: 3), // enabled border
+                          focusedBorder: _buildOutlineInputBorder(color: Color(0xFFF9E4C8), width: 3), // focused border
+                          errorBorder: _buildOutlineInputBorder(color: Colors.red, width: 3), // error border
+                          focusedErrorBorder: _buildOutlineInputBorder(color: Colors.red, width: 3), // focused error border
                         ),
                         onSaved: (String? value) {
                           _account.name = value!;
                         },
-
                         validator: (value) {
-                          if (value!.isEmpty) {
-                            return '名前は必須項目です';
-                          } else {
-                            return null;
-                          }
+                          if (value!.isEmpty) return '名前は必須項目です';
+                          else return null;
                         },
                       ),
+                      //ユーザネーム入力
                       TextFormField(
                         controller: _usernameController,
                         inputFormatters: [
@@ -190,51 +168,21 @@ class _AccountSettingState extends State<AccountSetting> {
                           labelText: 'ユーザ名を入力',
                           filled: true,
                           fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Color(0xFFC5D8E7),
-                              width: 3,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Color(0xFFC5D8E7),
-                              width: 3,
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Colors.red,
-                              width: 3,
-                            ),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Colors.red,
-                              width: 3,
-                            ),
-                          ),
+                          border: _buildOutlineInputBorder(color: Colors.transparent, width: 0), // default border
+                          enabledBorder: _buildOutlineInputBorder(color: Color(0xFFC5D8E7), width: 3), // enabled border
+                          focusedBorder: _buildOutlineInputBorder(color: Color(0xFFC5D8E7), width: 3), // focused border
+                          errorBorder: _buildOutlineInputBorder(color: Colors.red, width: 3), // error border
+                          focusedErrorBorder: _buildOutlineInputBorder(color: Colors.red, width: 3), // focused error border
                         ),
                         onSaved: (String? value) {
                           _account.username = value!;
                         },
-
                         validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'ユーザ名は必須項目です';
-                          } else {
-                            return null;
-                          }
+                          if (value!.isEmpty) return 'ユーザ名は必須項目です';
+                          else return null;
                         },
                       ),
+                      //bio入力
                       TextFormField(
                         maxLines: null,
                         controller: _descriptionController,
@@ -247,50 +195,21 @@ class _AccountSettingState extends State<AccountSetting> {
                           labelText: '自己紹介を入力',
                           filled: true,
                           fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Color(0xFFF9E4C8),
-                              width: 3,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Color(0xFFF9E4C8),
-                              width: 3,
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Colors.red,
-                              width: 3,
-                            ),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Colors.red,
-                              width: 3,
-                            ),
-                          ),
+                          border: _buildOutlineInputBorder(color: Colors.transparent, width: 0), // default border
+                          enabledBorder: _buildOutlineInputBorder(color: Color(0xFFF9E4C8), width: 3), // enabled border
+                          focusedBorder: _buildOutlineInputBorder(color: Color(0xFFF9E4C8), width: 3), // focused border
+                          errorBorder: _buildOutlineInputBorder(color: Colors.red, width: 3), // error border
+                          focusedErrorBorder: _buildOutlineInputBorder(color: Colors.red, width: 3), // focused error border
                         ),
                         onSaved: (String? value) {
                           _account.bio = value!;
                         },
                         validator: (value) {
-                          if (value!.isEmpty) {
-                            return '自己紹介は必須項目です';
-                          } else {
-                            return null;
-                          }
+                          if (value!.isEmpty) return '自己紹介は必須項目です';
+                          else return null;
                         },
                       ),
+                      //保存ボタン
                       TextButton(
                         style: TextButton.styleFrom(
                           backgroundColor: Color(0xFFF6CBD1),
@@ -308,8 +227,7 @@ class _AccountSettingState extends State<AccountSetting> {
                           await _setaccount(_mainReference);
                         },
                         child: Center(
-                          child: Text(
-                            '保存',
+                          child: Text( '保存',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
