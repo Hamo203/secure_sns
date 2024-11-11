@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:floating_bubbles/floating_bubbles.dart';
 import 'package:flutter/material.dart';
 
+import '../../api/gemma_api.dart';
+
 class NvcFeedbackPage extends StatefulWidget {
   final String originalContent;
   const NvcFeedbackPage({
@@ -17,24 +19,34 @@ class NvcFeedbackPage extends StatefulWidget {
 class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
   // 1 -> 大丈夫かな？　2-> 言い換え提示　3-> ありがとう!
   int _currentStep = 1;
-  late String _revisedContent;
-  Timer? _timer;
+
+  List<String> suggestions = ["サーバーからの応答を取得しています..."];
+  final GemmaApi gemmaApi = GemmaApi();
+
 
 
   void initState(){
     super.initState();
-    _revisedContent=widget.originalContent;
-    if (_currentStep == 1) {
-      _startTimer(); // 最初のステップでタイマーを開始
-    }
+    _fetchSuggestions();
   }
 
-  void _startTimer() {
-    _timer = Timer(Duration(seconds: 5), () {
-      if (mounted && _currentStep == 1) {
+  Future<void> _fetchSuggestions() async {
+    // サーバーからのデータ取得ロジックをここに追加してください
+    // 例：サーバーにリクエストを送信し、応答を suggestions に設定します
+    try {
+      final responses = await gemmaApi.sendText(widget.originalContent);
+      setState(() {
+        suggestions = responses;
+
         _nextStep();
-      }
-    });
+      });
+    } catch (error) {
+      setState(() {
+        suggestions = ['エラー: サーバーからの応答を取得できませんでした'];
+
+        _nextStep();
+      });
+    }
   }
 
   void _nextStep() {
@@ -62,7 +74,6 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
         return _buildSecondStep();
       case 3:
         return _buildThirdStep();
-
       default:
         return Container();
 
@@ -121,13 +132,7 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
   }
 
   Widget _buildSecondStep() {
-    final suggestions = [
-      'もう少し優しい表現にしてみましょう。',
-      '別の言い方を考えてみてください。',
-      'その言葉を使わずに伝えてみましょう。',
-      '他人の気持ちを考えてみましょう。',
-      'ポジティブな表現に変えてみましょう。',
-    ];
+
     Size screenSize = MediaQuery.sizeOf(context);
     return Center(
       child: Container(
@@ -153,28 +158,17 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
             SizedBox(height: 15),
             Container(
               height: screenSize.height * 0.2,
-              child: ListView(
+              child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                children: <Widget>[
-                  Container(
+                itemCount: suggestions.length,
+                itemBuilder: (context, index) {
+                  return Container(
                     width: screenSize.width * 0.8,
                     margin: EdgeInsets.symmetric(horizontal: 8.0),
                     color: Colors.grey.shade200,
-                    child: Center(child: Text(suggestions[0])),
-                  ),
-                  Container(
-                    width: screenSize.width * 0.8,
-                    margin: EdgeInsets.symmetric(horizontal: 8.0),
-                    color: Colors.grey.shade300,
-                    child: Center(child: Text(suggestions[1])),
-                  ),
-                  Container(
-                    width: screenSize.width * 0.8,
-                    margin: EdgeInsets.symmetric(horizontal: 8.0),
-                    color: Colors.grey.shade400,
-                    child: Center(child: Text(suggestions[2])),
-                  ),
-                ],
+                    child: Center(child: Text(suggestions[index])),
+                  );
+                },
               ),
             ),
             SizedBox(height: 20),
@@ -192,7 +186,6 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
       ),
     );
   }
-
 
   Widget _buildThirdStep() {
     Size screenSize = MediaQuery.of(context).size;
