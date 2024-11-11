@@ -1,7 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
+//Google Cloud Natural Language APIを使用
 class NaturalLanguageService {
   final String _apiKey = dotenv.env['API_KEY']!; // Google Cloud APIキーを設定
 
