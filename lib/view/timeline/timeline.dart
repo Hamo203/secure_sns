@@ -4,16 +4,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:secure_sns/view/account/accountpage.dart';
 import 'package:secure_sns/view/components/account_drawer.dart';
 
+import '../../api/api_service.dart';
 import '../../api/natural_language_service.dart';
 import '../../model/account.dart';
 import '../../model/post.dart';
 import 'package:like_button/like_button.dart';
 
+import '../../services/image_service.dart';
+import '../../services/offencive_classfier.dart';
 import '../account/user_auth.dart';
 import '../startup/login.dart';
 import 'comment.dart';
@@ -35,11 +39,25 @@ class _TimelineState extends State<Timeline> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   String _result = '';
 
+  //タイムラインから入力できるコメントの攻撃性判定用
+  late ApiService apiService;
+  late OffensiveClassifier offensiveClassifier;
+
+  late ImageService imageService; // ImageServiceのインスタンスを追加
 
   @override
   void initState() {
     super.initState();
     fetchPosts();
+    apiService = ApiService(baseUrl: dotenv.env['BASE_URL']!);
+    imageService = ImageService(); // ImageServiceを初期化
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    //OffensiveClassifier のインスタンス化
+    offensiveClassifier = OffensiveClassifier(apiService: apiService, context: context);
   }
 
   //postの取得
@@ -92,151 +110,33 @@ class _TimelineState extends State<Timeline> {
     }
   }
 
-  //写真を撮る
-  Future captureImage() async {
-    final XFile? photo = await picker.pickImage(source: ImageSource.camera);
-    if (photo == null) {
-      print('No image selected');
-      return;
+  // 写真を撮る
+  Future<void> captureImage() async {
+    File? photo = await imageService.captureImage();
+    if (photo != null) {
+      setState(() {
+        _image = photo;
+      });
     }
-    setState(() {
-      _image = File(photo.path);
-    });
   }
 
-  //ギャラリーから写真を選択
-  Future getImageFromGallery() async{
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    if (image == null) {
-      print('No image selected');
-      return;
+  // ギャラリーから写真を選ぶ
+  Future<void> getImageFromGallery() async {
+    File? image = await imageService.getImageFromGallery();
+    if (image != null) {
+      setState(() {
+        _image = image;
+      });
     }
-    setState(() {
-      _image = File(image.path);
-    });
   }
 
   //コメントを分析する
   Future<bool> _analyzeText(String message) async {
-    double score=1;
-    double magnitude=1;
-
-    // テキストが入力されていないとき
-    if (message.isEmpty) {
+    return await offensiveClassifier.analyzeText(message, (result) {
       setState(() {
-        _result = 'Please enter some text';
+        _result = result;
       });
-      return false;
-    }
-
-    // Natural Language APIを呼び出して解析
-    final analysisResult = await NaturalLanguageService().analyzeSentiment(message);
-    if(analysisResult!=null){
-      setState(() {
-        score = analysisResult['score']!;
-        magnitude = analysisResult['magnitude']!;
-        _result='Score: $score, Magnitude: $magnitude';
-      });
-    }
-
-    print("result: $_result");//デバッグ用
-
-    //scoreが1より小さいかつmagnitudeが1より小さかったらdialogを出す
-    if(score<0){
-      return await _showAlertDialog(score, magnitude);
-    }else{
-      //点が高かったらtrue
-      return true;
-    }
-  }
-
-  //分析の結果値がまずかったらdialogを出す
-  Future<bool> _showAlertDialog(double score, double magnitude) {
-    print("score:$score, magnitude:$magnitude");
-    return showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.0),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min, // 高さをコンテンツに合わせる
-              children: [
-                // コンテンツ部分
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFf7f7f7),
-                    border: Border(
-                      bottom: BorderSide(
-                        width: 0.5,
-                        color: Color.fromRGBO(0, 0, 0, 0.4),
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text("本当に送ってもだいじょうぶですか？"),
-                      const SizedBox(height: 16.0),
-                      Image.asset(
-                        'images/face/bully.png',
-                        width: 150,
-                        height: 150,
-                      ),
-                    ],
-                  ),
-                ),
-                // ボタン部分
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFf7f7f7),
-                  ),
-                  width: double.infinity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      //キャンセルボタン
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop(false);
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.black, backgroundColor: Color(0xFFf9e4c8),
-                          ),
-                          child: const Text("キャンセル"),
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 40,
-                        color: Colors.grey,
-                      ),
-                      //送信ボタン
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop(true);
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.black, backgroundColor: Color(0xFFc5d8e7),
-                          ),
-                          child: const Text("送信"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    ).then((value) => value ?? false);
+    });
   }
 
   //コメントのuploadをおこなう

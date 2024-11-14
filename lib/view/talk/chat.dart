@@ -4,12 +4,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:http/http.dart' as http;
 
+import '../../api/api_service.dart';
 import '../../api/natural_language_service.dart';
+import '../../services/image_service.dart';
+import '../../services/offencive_classfier.dart';
 
 class FirestoreChatPage extends StatefulWidget {
   final String chatId; // チャットルームID
@@ -31,6 +35,12 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
   late String _userId; // ログインしているユーザーID
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  //攻撃性判定用
+  late ApiService apiService;
+  late OffensiveClassifier offensiveClassifier;
+  late ImageService imageService; // ImageServiceのインスタンスを追加
+
+
   String _result = '';
 
   @override
@@ -38,6 +48,15 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
     super.initState();
     _loadUserId();
     _loadMessagesFromFirestore();
+    apiService = ApiService(baseUrl: dotenv.env['BASE_URL']!);
+    imageService = ImageService(); // ImageServiceを初期化
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    //OffensiveClassifier のインスタンス化
+    offensiveClassifier = OffensiveClassifier(apiService: apiService, context: context);
   }
 
   // FirebaseAuth からユーザーIDを取得
@@ -96,7 +115,7 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
       text: message.text,
     );
 
-    bool result= await _analyzeText(textMessage);
+    bool result= await _analyzeText(textMessage.text);
     if(result){
       _addMessage(textMessage);
       // 新しいメッセージデータを作成
@@ -196,138 +215,14 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
     }
   }
 
-  Future<bool> _analyzeText(types.Message message) async {
-    double score=1;
-    double magnitude=1;
-    bool result;
-
-    if (message is types.TextMessage) {
-      String text = message.text;
-
-      // テキストが入力されていないとき
-      if (text.isEmpty) {
-        setState(() {
-          _result = 'Please enter some text';
-        });
-        return false;
-      }
-
-      // Natural Language APIを呼び出して解析
-      final analysisResult = await NaturalLanguageService().analyzeSentiment(text);
-      if(analysisResult!=null){
-        setState(() {
-          score = analysisResult['score']!;
-          magnitude = analysisResult['magnitude']!;
-          _result='Score: $score, Magnitude: $magnitude';
-        });
-      }
-
-      print("result: $_result");
-
-      if(score<1 && magnitude < 1){
-        return await _showAlertDialog(score, magnitude);
-      }else{
-        //点が高かったらtrue
-        return true;
-      }
-
-    } else {
-      // メッセージがテキストメッセージでない場合の処理
+  Future<bool> _analyzeText(String message) async {
+    return await offensiveClassifier.analyzeText(message, (result) {
       setState(() {
-        _result = 'Message is not a text message';
+        _result = result;
       });
-      print("result: $_result");
-      return true;
-    }
+    });
   }
 
-  Future<bool> _showAlertDialog(double score, double magnitude) {
-    print("score:$score, magnitude:$magnitude");
-    return showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.0),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min, // 高さをコンテンツに合わせる
-              children: [
-                // コンテンツ部分
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFf7f7f7),
-                    border: Border(
-                      bottom: BorderSide(
-                        width: 0.5,
-                        color: Color.fromRGBO(0, 0, 0, 0.4),
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text("本当に送ってもだいじょうぶですか？"),
-                      const SizedBox(height: 16.0),
-                      Image.asset(
-                        'images/face/bully.png',
-                        width: 150,
-                        height: 150,
-                      ),
-                    ],
-                  ),
-                ),
-                // ボタン部分
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFf7f7f7),
-                  ),
-                  width: double.infinity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      //キャンセルボタン
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop(false);
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.black, backgroundColor: Color(0xFFf9e4c8),
-                          ),
-                          child: const Text("キャンセル"),
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 40,
-                        color: Colors.grey,
-                      ),
-                      //送信ボタン
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop(true);
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.black, backgroundColor: Color(0xFFc5d8e7),
-                          ),
-                          child: const Text("送信"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    ).then((value) => value ?? false);
-  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
