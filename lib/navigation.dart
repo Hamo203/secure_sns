@@ -6,7 +6,6 @@ import 'package:secure_sns/FirestoreSave.dart';
 import 'package:secure_sns/view/account/accountpage.dart';
 import 'package:secure_sns/view/account/user_auth.dart';
 import 'package:secure_sns/view/talk/chatroom.dart';
-import 'package:secure_sns/view/talk/roomlist.dart';
 import 'package:secure_sns/view/timeline/postpage.dart';
 import 'package:secure_sns/view/timeline/timeline.dart';
 
