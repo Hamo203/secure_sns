@@ -13,6 +13,7 @@ import '../../navigation.dart';
 import '../../services/image_service.dart';
 import '../../services/offencive_classfier.dart';
 import '../account/user_auth.dart';
+import '../feedback/nvc_feedback_page.dart';
 
 class Postpage extends StatefulWidget {
   const Postpage({super.key});
@@ -100,11 +101,61 @@ class _PostpageState extends State<Postpage> {
   }
 
   Future<bool> _analyzeText(String message) async {
-    return await offensiveClassifier.analyzeText(message, (result) {
+    if (message.isEmpty) {
       setState(() {
-        _result = result;
+        _result = 'テキストを入力してください';
       });
-    });
+      return true; // 空のメッセージは安全とみなす
+    }
+
+    try {
+      // テキストを分類
+      Map<String, String> analysisResult = await offensiveClassifier.apiService.classifyText(message);
+
+      // '%' を除去してから double に変換
+      double offensivePercentage = double.parse(analysisResult['offensive']!.replaceAll('%', '').trim());
+      double grayZonePercentage = double.parse(analysisResult['gray_zone']!.replaceAll('%', '').trim());
+
+      // 結果を表示
+      setState(() {
+        _result = '''
+      攻撃的でない発言: ${analysisResult['non_offensive']}%
+      グレーゾーンの発言: ${grayZonePercentage}%
+      攻撃的な発言: ${offensivePercentage}%
+      ''';
+      });
+
+      print("分析結果: $analysisResult"); // デバッグ用
+
+      // 攻撃的またはグレーゾーンが55%以上の場合はfalse
+      return offensivePercentage < 55 && grayZonePercentage < 55;
+    } catch (e) {
+      print('分析中にエラーが発生しました: $e');
+      setState(() {
+        _result = 'エラーが発生しました: $e';
+      });
+      return true; // エラー時は安全とみなす
+    }
+  }
+
+
+  Future<bool> _showNVCFeedBack(String originalContent) async {
+    final Map<String, dynamic>? result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NvcFeedbackPage(originalContent: originalContent),
+      ),
+    );
+
+    if (result != null && result['isConfirmed'] == true) {
+      setState(() {
+        _post.description = result['rewrittenContent']; // 言い換えた内容を保存
+      });
+      return true;
+    } else {
+      // ユーザーがキャンセルした場合
+      return false;
+    }
   }
 
   @override
@@ -128,11 +179,19 @@ class _PostpageState extends State<Postpage> {
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
 
-                    bool analysisPassed = await _analyzeText(_post.description);
+                    bool isSafe = await _analyzeText(_post.description);
 
-                    if (!analysisPassed) {
-                      print("analysis doesn't passed");
-                      return;
+
+                    if (!isSafe) {
+                      print("攻撃的またはグレーゾーンが高い NVCフィードバックを表示");
+
+                      // _analyzeText内で攻撃性が高いと判断された場合
+                      bool feedbackResult = await _showNVCFeedBack(_post.description);
+
+                      if (!feedbackResult) {
+                        print("ユーザーがフィードバックをキャンセル");
+                        return;
+                      }
                     }
 
                     // 画像がある場合は画像をアップロードしてからデータを保存
