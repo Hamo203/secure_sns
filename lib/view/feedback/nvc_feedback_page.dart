@@ -32,11 +32,17 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
   }
 
   Future<void> _fetchSuggestions() async {
-    //originalContentをいいかえてresponses取得
     try {
       final responses = await gemmaApi.sendText(widget.originalContent);
+
+      // 不要な番号や記号を削除
+      final cleanedResponses = responses.map((response) {
+        return response.replaceAll(RegExp(r'^\d+\.\s*'), '')
+            .replaceAll(RegExp(r'[「」]'), '').trim(); // "1. "の形式を削除
+      }).toList();
+
       setState(() {
-        suggestions = responses;
+        suggestions = cleanedResponses;
         _currentStep = 2;
       });
     } catch (error) {
@@ -87,119 +93,126 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
 
   Widget _buildFirstStep() {
     Size screenSize = MediaQuery.of(context).size;
-    return SingleChildScrollView(
-      child: Stack(
-        children: [
-          // 背景色を設定するコンテナ
-          Positioned.fill(
-            child: Container(
-              color: Colors.white, // 必要に応じて色を変更
-            ),
+
+    return Stack(
+      children: [
+        // 背景色を設定するコンテナ
+        Positioned.fill(
+          child: Container(
+            color: Colors.white, // 必要に応じて色を変更
           ),
-          // 浮かぶバブルを表示
-          Positioned.fill(
-            child: FloatingBubbles.alwaysRepeating(
-              noOfBubbles: 25,
-              colorsOfBubbles: [
-                //背景の色
-                Colors.blueAccent.withAlpha(30),
-              ],
-              sizeFactor: 0.16,
-              opacity: 30,
-              paintingStyle: PaintingStyle.fill,
-              shape: BubbleShape.circle, //bubbleの形
-              speed: BubbleSpeed.normal,
-            ),
+        ),
+        // 浮かぶバブルを表示
+        Positioned.fill(
+          child: FloatingBubbles.alwaysRepeating(
+            noOfBubbles: 25,
+            colorsOfBubbles: [
+              //背景の色
+              Colors.blueAccent.withAlpha(30),
+            ],
+            sizeFactor: 0.16,
+            opacity: 30,
+            paintingStyle: PaintingStyle.fill,
+            shape: BubbleShape.circle, //bubbleの形
+            speed: BubbleSpeed.normal,
           ),
-          // 既存のコンテンツを表示
-          Center(
-            child: Container(
-              padding: EdgeInsets.all(screenSize.width * 0.2),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    'images/face/cry.png',
-                    width: screenSize.width * 0.6,
-                    height: screenSize.width * 0.6,
-                  ),
-                  SizedBox(height: 40),
-                  Text(
-                    "そのことば\n大丈夫かな？",
-                    style: TextStyle(fontSize: 24),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+        ),
+        // コンテンツ
+        SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: screenSize.height, // 画面全体を確保
+            ),
+            child: IntrinsicHeight(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'images/face/cry.png',
+                      width: screenSize.width * 0.6,
+                      height: screenSize.width * 0.6,
+                    ),
+                    SizedBox(height: 40),
+                    Text(
+                      "そのことば\n大丈夫かな？",
+                      style: TextStyle(fontSize: 24),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildSecondStep() {
-
     Size screenSize = MediaQuery.sizeOf(context);
-    bool isError = suggestions.length == 1 && suggestions.first.startsWith('エラー');
 
     return SingleChildScrollView(
-      child: Center(
-        child: Container(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'images/face/cry.png',
-                width: screenSize.width * 0.4,
-                height: screenSize.width * 0.4,
-              ),
-              SizedBox(height: 20),
-              Text(
-                "非常に攻撃的です!\n相手を傷つけてしまうかも?",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 15),
-              Text(
-                "言い換えてみませんか？",
-                style: TextStyle(fontSize: 16),
-              ),
-              SizedBox(height: 15),
-              Container(
-                height: screenSize.height * 0.2,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: suggestions.length,
-                  itemBuilder: (context, index) {
-                    final suggestion = suggestions[index];
-                    bool isSelected = _selectedSuggestion == suggestion;
-      
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedSuggestion = suggestion;
-                        });
-                      },
-                      child: Container(
-                        width: screenSize.width * 0.8,
-                        margin: EdgeInsets.symmetric(horizontal: 8.0),
-                        color: Colors.grey.shade200,
-                        child: Center(child: Text(suggestions[index])),
-                      ),
-                    );
-                  },
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: screenSize.height, // 画面全体を確保
+        ),
+        child: IntrinsicHeight(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'images/face/cry.png',
+                  width: screenSize.width * 0.4,
+                  height: screenSize.width * 0.4,
                 ),
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _selectedSuggestion != null ? _proceedToThankYou : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pink.shade100,
+                SizedBox(height: 20),
+                Text(
+                  "非常に攻撃的です!\n相手を傷つけてしまうかも?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 18),
                 ),
-                child: Text('送信'),
-              ),
-            ],
+                SizedBox(height: 15),
+                Text(
+                  "言い換えてみませんか？",
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(height: 15),
+                Container(
+                  height: screenSize.height * 0.2,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: suggestions.length,
+                    itemBuilder: (context, index) {
+                      final suggestion = suggestions[index];
+
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedSuggestion = suggestion;
+                          });
+                        },
+                        child: Container(
+                          width: screenSize.width * 0.8,
+                          margin: EdgeInsets.symmetric(horizontal: 8.0),
+                          color: Colors.grey.shade200,
+                          child: Center(child: Text(suggestions[index])),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _selectedSuggestion != null ? _proceedToThankYou : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.pink.shade100,
+                  ),
+                  child: Text('送信'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
