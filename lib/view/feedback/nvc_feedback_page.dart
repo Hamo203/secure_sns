@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:floating_bubbles/floating_bubbles.dart';
 import 'package:flutter/material.dart';
 
+import '../../api/gemma_api.dart';
+
 class NvcFeedbackPage extends StatefulWidget {
+  //ユーザが最初に入力したことば
   final String originalContent;
   const NvcFeedbackPage({
     required this.originalContent,
@@ -17,30 +20,44 @@ class NvcFeedbackPage extends StatefulWidget {
 class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
   // 1 -> 大丈夫かな？　2-> 言い換え提示　3-> ありがとう!
   int _currentStep = 1;
-  late String _revisedContent;
-  Timer? _timer;
 
+  List<String> suggestions = ["サーバーからの応答を取得しています..."];
+  final GemmaApi gemmaApi = GemmaApi();
+
+  String? _selectedSuggestion;
 
   void initState(){
     super.initState();
-    _revisedContent=widget.originalContent;
-    if (_currentStep == 1) {
-      _startTimer(); // 最初のステップでタイマーを開始
+    _fetchSuggestions();
+  }
+
+  Future<void> _fetchSuggestions() async {
+    //originalContentをいいかえてresponses取得
+    try {
+      final responses = await gemmaApi.sendText(widget.originalContent);
+      setState(() {
+        suggestions = responses;
+        _currentStep = 2;
+      });
+    } catch (error) {
+      setState(() {
+        suggestions = ['エラー: サーバーからの応答を取得できませんでした'];
+        _currentStep = 2;
+      });
     }
   }
 
-  void _startTimer() {
-    _timer = Timer(Duration(seconds: 5), () {
-      if (mounted && _currentStep == 1) {
-        _nextStep();
-      }
-    });
-  }
-
-  void _nextStep() {
+  void _proceedToThankYou() {
     setState(() {
-      //次のページへ
-      _currentStep++;
+      _currentStep = 3; // ありがとうステップへ移行
+    });
+
+    // 5秒後に自動的に前の画面に戻り、結果を返す
+    Timer(Duration(seconds: 5), () {
+      Navigator.pop(context, {
+        'isConfirmed': _selectedSuggestion != null,
+        'rewrittenContent': _selectedSuggestion, // 選択された提案文
+      });
     });
   }
 
@@ -62,7 +79,6 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
         return _buildSecondStep();
       case 3:
         return _buildThirdStep();
-
       default:
         return Container();
 
@@ -71,128 +87,124 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
 
   Widget _buildFirstStep() {
     Size screenSize = MediaQuery.of(context).size;
-    return Stack(
-      children: [
-        // 背景色を設定するコンテナ
-        Positioned.fill(
-          child: Container(
-            color: Colors.white, // 必要に応じて色を変更してください
+    return SingleChildScrollView(
+      child: Stack(
+        children: [
+          // 背景色を設定するコンテナ
+          Positioned.fill(
+            child: Container(
+              color: Colors.white, // 必要に応じて色を変更
+            ),
           ),
-        ),
-        // 浮かぶバブルを表示
-        Positioned.fill(
-          child: FloatingBubbles.alwaysRepeating(
-            noOfBubbles: 25,
-            colorsOfBubbles: [
-              //背景の色
-              Colors.blueAccent.withAlpha(30),
-            ],
-            sizeFactor: 0.16,
-            opacity: 30,
-            paintingStyle: PaintingStyle.fill,
-            shape: BubbleShape.circle, //bubbleの形
-            speed: BubbleSpeed.normal,
-          ),
-        ),
-        // 既存のコンテンツを表示
-        Center(
-          child: Container(
-            padding: EdgeInsets.all(screenSize.width * 0.2),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  'images/face/cry.png',
-                  width: screenSize.width * 0.6,
-                  height: screenSize.width * 0.6,
-                ),
-                SizedBox(height: 40),
-                Text(
-                  "そのことば\n大丈夫かな？",
-                  style: TextStyle(fontSize: 24),
-                  textAlign: TextAlign.center,
-                ),
+          // 浮かぶバブルを表示
+          Positioned.fill(
+            child: FloatingBubbles.alwaysRepeating(
+              noOfBubbles: 25,
+              colorsOfBubbles: [
+                //背景の色
+                Colors.blueAccent.withAlpha(30),
               ],
+              sizeFactor: 0.16,
+              opacity: 30,
+              paintingStyle: PaintingStyle.fill,
+              shape: BubbleShape.circle, //bubbleの形
+              speed: BubbleSpeed.normal,
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecondStep() {
-    final suggestions = [
-      'もう少し優しい表現にしてみましょう。',
-      '別の言い方を考えてみてください。',
-      'その言葉を使わずに伝えてみましょう。',
-      '他人の気持ちを考えてみましょう。',
-      'ポジティブな表現に変えてみましょう。',
-    ];
-    Size screenSize = MediaQuery.sizeOf(context);
-    return Center(
-      child: Container(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'images/face/cry.png',
-              width: screenSize.width * 0.4,
-              height: screenSize.width * 0.4,
-            ),
-            SizedBox(height: 20),
-            Text(
-              "非常に攻撃的です!\n相手を傷つけてしまうかも?",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18),
-            ),
-            SizedBox(height: 15),
-            Text(
-              "言い換えてみませんか？",
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 15),
-            Container(
-              height: screenSize.height * 0.2,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: <Widget>[
-                  Container(
-                    width: screenSize.width * 0.8,
-                    margin: EdgeInsets.symmetric(horizontal: 8.0),
-                    color: Colors.grey.shade200,
-                    child: Center(child: Text(suggestions[0])),
+          // 既存のコンテンツを表示
+          Center(
+            child: Container(
+              padding: EdgeInsets.all(screenSize.width * 0.2),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'images/face/cry.png',
+                    width: screenSize.width * 0.6,
+                    height: screenSize.width * 0.6,
                   ),
-                  Container(
-                    width: screenSize.width * 0.8,
-                    margin: EdgeInsets.symmetric(horizontal: 8.0),
-                    color: Colors.grey.shade300,
-                    child: Center(child: Text(suggestions[1])),
-                  ),
-                  Container(
-                    width: screenSize.width * 0.8,
-                    margin: EdgeInsets.symmetric(horizontal: 8.0),
-                    color: Colors.grey.shade400,
-                    child: Center(child: Text(suggestions[2])),
+                  SizedBox(height: 40),
+                  Text(
+                    "そのことば\n大丈夫かな？",
+                    style: TextStyle(fontSize: 24),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                _nextStep();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.pink.shade100,
-              ),
-              child: Text('送信'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
+  Widget _buildSecondStep() {
+
+    Size screenSize = MediaQuery.sizeOf(context);
+    bool isError = suggestions.length == 1 && suggestions.first.startsWith('エラー');
+
+    return SingleChildScrollView(
+      child: Center(
+        child: Container(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'images/face/cry.png',
+                width: screenSize.width * 0.4,
+                height: screenSize.width * 0.4,
+              ),
+              SizedBox(height: 20),
+              Text(
+                "非常に攻撃的です!\n相手を傷つけてしまうかも?",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 15),
+              Text(
+                "言い換えてみませんか？",
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 15),
+              Container(
+                height: screenSize.height * 0.2,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: suggestions.length,
+                  itemBuilder: (context, index) {
+                    final suggestion = suggestions[index];
+                    bool isSelected = _selectedSuggestion == suggestion;
+      
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedSuggestion = suggestion;
+                        });
+                      },
+                      child: Container(
+                        width: screenSize.width * 0.8,
+                        margin: EdgeInsets.symmetric(horizontal: 8.0),
+                        color: Colors.grey.shade200,
+                        child: Center(child: Text(suggestions[index])),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _selectedSuggestion != null ? _proceedToThankYou : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pink.shade100,
+                ),
+                child: Text('送信'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildThirdStep() {
     Size screenSize = MediaQuery.of(context).size;

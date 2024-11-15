@@ -18,9 +18,9 @@ class ApiService{
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return {
-        'non_offensive': data['non_offensive'],
-        'gray_zone': data['gray_zone'],
-        'offensive': data['offensive'],
+        'non_offensive': data['non_offensive'].toString(),
+        'gray_zone': data['gray_zone'].toString(),
+        'offensive': data['offensive'].toString(),
       };
     } else {
       throw Exception('Failed to classify text');

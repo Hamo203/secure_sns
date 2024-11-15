@@ -14,6 +14,7 @@ import '../../api/api_service.dart';
 import '../../api/natural_language_service.dart';
 import '../../services/image_service.dart';
 import '../../services/offencive_classfier.dart';
+import '../feedback/nvc_feedback_page.dart';
 
 class FirestoreChatPage extends StatefulWidget {
   final String chatId; // チャットルームID
@@ -108,54 +109,63 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
   void _handleSendPressed(types.PartialText message) async {
     if (_userId.isEmpty) return;
 
+    // 攻撃性の分析
+    bool isSafe = await _analyzeText(message.text);
+
+    if (!isSafe) {
+      print("攻撃性またはグレーゾーンが高い フィードバックを実行");
+
+      bool feedbackResult = await _showNVCFeedBack(message.text);
+
+      if (!feedbackResult) {
+        print("フィードバックをキャンセル");
+        return; // 送信を中止
+      }
+
+      // 修正後の文章を反映
+      message = types.PartialText(text: _result); // 修正案を反映
+    }
+
+    // 修正後またはそのままの文章を送信
     final textMessage = types.TextMessage(
-      author: types.User(id: _userId), // 現在のユーザーIDを設定
+      author: types.User(id: _userId),
       createdAt: DateTime.now().millisecondsSinceEpoch,
       id: const Uuid().v4(),
       text: message.text,
     );
 
-    bool result= await _analyzeText(textMessage.text);
-    if(result){
-      _addMessage(textMessage);
-      // 新しいメッセージデータを作成
-      Map<String, dynamic> newMessageData = {
-        'text': message.text,
-        'senderId': _userId,
-        'createdAt': Timestamp.now(),
-      };
-      try {
-        // Firestoreの既存のメッセージ配列を取得し、新しいメッセージを追加
-        DocumentReference chatDocRef = FirebaseFirestore.instance.collection('chats').doc(widget.chatId);
-        DocumentSnapshot snapshot = await chatDocRef.get();
+    _addMessage(textMessage);
 
-        if (snapshot.exists && snapshot.data() != null) {
-          // 既存のメッセージ配列を取得　なければ空のリストを初期化
-          List<dynamic> messageList = snapshot.get('messages') ?? [];
+    Map<String, dynamic> newMessageData = {
+      'text': message.text,
+      'senderId': _userId,
+      'createdAt': Timestamp.now(),
+    };
 
-          // 新しいメッセージをリストに追加
-          messageList.add(newMessageData);
+    try {
+      DocumentReference chatDocRef = FirebaseFirestore.instance.collection('chats').doc(widget.chatId);
+      DocumentSnapshot snapshot = await chatDocRef.get();
 
-          // Firestoreのメッセージリストを更新
-          await chatDocRef.set({
-            'messages': messageList,
-            'lastMessage': message.text, // 最後のメッセージを保存
-            'lastMessageTime': Timestamp.now(), // 最後のメッセージ時間を保存
-          }, SetOptions(merge: true));
-        } else {
-          // snapshotのデータがないときに自動で新しく作る
-          await chatDocRef.set({
-            'messages': [newMessageData], // メッセージ配列を追加
-            'participants': [widget.partnerId, _userId], // 参加者情報
-            'lastMessage': message.text,
-            'lastMessageTime': Timestamp.now(), // 最後のメッセージ時間を保存
-          });
-        }
-      } catch (e) {
-        print("Error saving message: $e");
+      if (snapshot.exists && snapshot.data() != null) {
+        List<dynamic> messageList = snapshot.get('messages') ?? [];
+        messageList.add(newMessageData);
+
+        await chatDocRef.set({
+          'messages': messageList,
+          'lastMessage': message.text,
+          'lastMessageTime': Timestamp.now(),
+        }, SetOptions(merge: true));
+      } else {
+        await chatDocRef.set({
+          'messages': [newMessageData],
+          'participants': [widget.partnerId, _userId],
+          'lastMessage': message.text,
+          'lastMessageTime': Timestamp.now(),
+        });
       }
+    } catch (e) {
+      print("Error saving message: $e");
     }
-
   }
 
   // 新しいメッセージをメッセージリストに追加
@@ -216,13 +226,60 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
   }
 
   Future<bool> _analyzeText(String message) async {
-    return await offensiveClassifier.analyzeText(message, (result) {
+    if (message.isEmpty) {
       setState(() {
-        _result = result;
+        _result = 'テキストを入力してください';
       });
-    });
+      return true; // 空のメッセージは安全とみなす
+    }
+
+    try {
+      // テキストを分類
+      Map<String, String> analysisResult = await offensiveClassifier.apiService.classifyText(message);
+
+      // '%' を除去してから double に変換
+      double offensivePercentage = double.parse(analysisResult['offensive']!.replaceAll('%', '').trim());
+      double grayZonePercentage = double.parse(analysisResult['gray_zone']!.replaceAll('%', '').trim());
+
+      // 結果を表示
+      setState(() {
+        _result = '''
+      攻撃的でない発言: ${analysisResult['non_offensive']}%
+      グレーゾーンの発言: ${grayZonePercentage}%
+      攻撃的な発言: ${offensivePercentage}%
+      ''';
+      });
+
+      print("分析結果: $analysisResult"); // デバッグ用
+
+      // 攻撃的またはグレーゾーンが55%以上の場合はfalse
+      return offensivePercentage < 55 && grayZonePercentage < 55;
+    } catch (e) {
+      print('分析中にエラーが発生しました: $e');
+      setState(() {
+        _result = 'エラーが発生しました: $e';
+      });
+      return true; // エラー時は安全とみなす
+    }
   }
 
+  Future<bool> _showNVCFeedBack(String originalContent) async {
+    final Map<String, dynamic>? result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NvcFeedbackPage(originalContent: originalContent),
+      ),
+    );
+
+    if (result != null && result['isConfirmed'] == true) {
+      setState(() {
+        _result = result['rewrittenContent']; // 修正後の文章を保存
+      });
+      return true;
+    } else {
+      return false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(

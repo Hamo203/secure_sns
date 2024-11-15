@@ -178,10 +178,7 @@ class _PostpageState extends State<Postpage> {
                   // フォームが有効か確認
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
-
                     bool isSafe = await _analyzeText(_post.description);
-
-
                     if (!isSafe) {
                       print("攻撃的またはグレーゾーンが高い NVCフィードバックを表示");
 
