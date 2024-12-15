@@ -41,6 +41,9 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
   late OffensiveClassifier offensiveClassifier;
   late ImageService imageService; // ImageServiceのインスタンスを追加
 
+  //攻撃的またはグレーゾーンの値
+  double offensivePercentage=0.0;
+  double grayZonePercentage=0.0;
 
   String _result = '';
 
@@ -115,7 +118,7 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
     if (!isSafe) {
       print("攻撃性またはグレーゾーンが高い フィードバックを実行");
 
-      bool feedbackResult = await _showNVCFeedBack(message.text);
+      bool feedbackResult = await _showNVCFeedBack(message.text,offensivePercentage,grayZonePercentage);
 
       if (!feedbackResult) {
         print("フィードバックをキャンセル");
@@ -238,8 +241,8 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
       Map<String, String> analysisResult = await offensiveClassifier.apiService.classifyText(message);
 
       // '%' を除去してから double に変換
-      double offensivePercentage = double.parse(analysisResult['offensive']!.replaceAll('%', '').trim());
-      double grayZonePercentage = double.parse(analysisResult['gray_zone']!.replaceAll('%', '').trim());
+      offensivePercentage = double.parse(analysisResult['offensive']!.replaceAll('%', '').trim());
+      grayZonePercentage = double.parse(analysisResult['gray_zone']!.replaceAll('%', '').trim());
 
       // 結果を表示
       setState(() {
@@ -263,11 +266,11 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
     }
   }
 
-  Future<bool> _showNVCFeedBack(String originalContent) async {
+  Future<bool> _showNVCFeedBack(String originalContent,double offensivePercentage,double grayZonePercentage) async {
     final Map<String, dynamic>? result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NvcFeedbackPage(originalContent: originalContent),
+        builder: (context) => NvcFeedbackPage(originalContent: originalContent,offensivePercentage: offensivePercentage,grayZonePercentage: grayZonePercentage),
       ),
     );
 
@@ -288,13 +291,13 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
     ),
     body: _userId.isNotEmpty
         ? Chat(
-            messages: _messages,
-            onMessageTap: _handleMessageTap,
-            onSendPressed: _handleSendPressed, // メッセージ送信時に実行される関数
-            showUserAvatars: true,
-            showUserNames: true,
-            user: types.User(id: _userId), // 現在のユーザー情報を設定
-          )
+      messages: _messages,
+      onMessageTap: _handleMessageTap,
+      onSendPressed: _handleSendPressed, // メッセージ送信時に実行される関数
+      showUserAvatars: true,
+      showUserNames: true,
+      user: types.User(id: _userId), // 現在のユーザー情報を設定
+    )
         : const Center(child: CircularProgressIndicator()), // ユーザーIDが取得されるまでローディングを表示
   );
 }

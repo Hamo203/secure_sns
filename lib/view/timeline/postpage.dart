@@ -35,6 +35,10 @@ class _PostpageState extends State<Postpage> {
   late OffensiveClassifier offensiveClassifier;
   late ImageService imageService; // ImageServiceのインスタンスを追加
 
+  //攻撃性スコアとグレイゾーンのスコア用の変数
+  double offensivePercentage=0.0;
+  double grayZonePercentage=0.0;
+
 
   @override
   void initState() {
@@ -113,8 +117,8 @@ class _PostpageState extends State<Postpage> {
       Map<String, String> analysisResult = await offensiveClassifier.apiService.classifyText(message);
 
       // '%' を除去してから double に変換
-      double offensivePercentage = double.parse(analysisResult['offensive']!.replaceAll('%', '').trim());
-      double grayZonePercentage = double.parse(analysisResult['gray_zone']!.replaceAll('%', '').trim());
+      offensivePercentage = double.parse(analysisResult['offensive']!.replaceAll('%', '').trim());
+      grayZonePercentage = double.parse(analysisResult['gray_zone']!.replaceAll('%', '').trim());
 
       // 結果を表示
       setState(() {
@@ -139,11 +143,11 @@ class _PostpageState extends State<Postpage> {
   }
 
 
-  Future<bool> _showNVCFeedBack(String originalContent) async {
+  Future<bool> _showNVCFeedBack(String originalContent,double offensivePercentage,double grayZonePercentage) async {
     final Map<String, dynamic>? result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NvcFeedbackPage(originalContent: originalContent),
+        builder: (context) => NvcFeedbackPage(originalContent: originalContent,offensivePercentage: offensivePercentage,grayZonePercentage: grayZonePercentage),
       ),
     );
 
@@ -171,7 +175,7 @@ class _PostpageState extends State<Postpage> {
         actions: <Widget>[
           IconButton(
             //snsにシェア用
-            icon: Icon(Icons.save),
+            icon: Icon(Icons.send),
               onPressed: () async {
                 print("保存ボタンを押した");
                 try {
@@ -183,7 +187,7 @@ class _PostpageState extends State<Postpage> {
                       print("攻撃的またはグレーゾーンが高い NVCフィードバックを表示");
 
                       // _analyzeText内で攻撃性が高いと判断された場合
-                      bool feedbackResult = await _showNVCFeedBack(_post.description);
+                      bool feedbackResult = await _showNVCFeedBack(_post.description,offensivePercentage,grayZonePercentage);
 
                       if (!feedbackResult) {
                         print("ユーザーがフィードバックをキャンセル");

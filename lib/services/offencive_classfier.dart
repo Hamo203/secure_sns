@@ -8,6 +8,10 @@ class OffensiveClassifier {
   final ApiService apiService;
   final BuildContext context;
 
+  //攻撃性スコアとグレイゾーンのスコア用の変数
+  double offensivePercentage=0.0;
+  double grayZonePercentage=0.0;
+
   OffensiveClassifier({required this.apiService, required this.context});
 
   // '%' を除去してから double に変換するヘルパーメソッド
@@ -29,8 +33,8 @@ class OffensiveClassifier {
       Map<String, String> analysisResult = await apiService.classifyText(message);
 
       // '%' を除去してから double に変換
-      double offensivePercentage = _parsePercentage(analysisResult['offensive']);
-      double grayZonePercentage = _parsePercentage(analysisResult['gray_zone']);
+      offensivePercentage = _parsePercentage(analysisResult['offensive']);
+      grayZonePercentage = _parsePercentage(analysisResult['gray_zone']);
 
       // 結果を更新
       updateResult('''
@@ -60,7 +64,7 @@ class OffensiveClassifier {
     final bool? result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NvcFeedbackPage(originalContent: originalContent),
+        builder: (context) => NvcFeedbackPage(originalContent: originalContent,offensivePercentage: offensivePercentage,grayZonePercentage: grayZonePercentage),
       ),
     );
 

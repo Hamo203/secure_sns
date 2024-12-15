@@ -8,8 +8,13 @@ import '../../api/gemma_api.dart';
 class NvcFeedbackPage extends StatefulWidget {
   //ユーザが最初に入力したことば
   final String originalContent;
+  final double offensivePercentage;
+  final double grayZonePercentage;
+
   const NvcFeedbackPage({
     required this.originalContent,
+    required this.offensivePercentage,
+    required this.grayZonePercentage,
     Key? key,
   }):super(key: key);
 
@@ -93,6 +98,8 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
 
   Widget _buildFirstStep() {
     Size screenSize = MediaQuery.of(context).size;
+    String text="そのことば\n大丈夫かな？";
+    if(widget.grayZonePercentage>55) text ="ちょっと言い方\nかえてみない？";
 
     return Stack(
       children: [
@@ -135,7 +142,7 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
                     ),
                     SizedBox(height: 40),
                     Text(
-                      "そのことば\n大丈夫かな？",
+                      text,
                       style: TextStyle(fontSize: 24),
                       textAlign: TextAlign.center,
                     ),
@@ -186,6 +193,7 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
                     itemCount: suggestions.length,
                     itemBuilder: (context, index) {
                       final suggestion = suggestions[index];
+                      final isSelected = suggestion == _selectedSuggestion;
 
                       return GestureDetector(
                         onTap: () {
@@ -196,13 +204,31 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
                         child: Container(
                           width: screenSize.width * 0.8,
                           margin: EdgeInsets.symmetric(horizontal: 8.0),
-                          color: Colors.grey.shade200,
-                          child: Center(child: Text(suggestions[index])),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            border: Border.all(
+                              color: isSelected ? Color(0xFFA5BACF) : Colors.transparent,
+                              width: isSelected ? 2.0 : 1.0, // 選択時に枠線を太くする
+                            ),
+                            borderRadius: BorderRadius.circular(8.0), // 角を丸める（オプション）
+                          ),
+                          child: Center(
+                            child: Text(
+                              suggestion,
+                              style: TextStyle(
+                                fontSize: 16.0,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: isSelected ? Colors.blue : Colors.black,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                         ),
                       );
                     },
                   ),
                 ),
+
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: _selectedSuggestion != null ? _proceedToThankYou : null,

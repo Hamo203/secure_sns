@@ -46,6 +46,11 @@ class _TimelineState extends State<Timeline> {
 
   late ImageService imageService; // ImageServiceのインスタンスを追加
 
+  //攻撃性の割合を入れておく変数
+  double _offensivePercentage = 0.0;
+  double _grayZonePercentage = 0.0;
+
+
   @override
   void initState() {
     super.initState();
@@ -150,6 +155,8 @@ class _TimelineState extends State<Timeline> {
 
       // 結果を表示
       setState(() {
+        _grayZonePercentage = grayZonePercentage;
+        _offensivePercentage = offensivePercentage;
         _result = '''
       攻撃的でない発言: ${analysisResult['non_offensive']}%
       グレーゾーンの発言: ${grayZonePercentage}%
@@ -159,22 +166,25 @@ class _TimelineState extends State<Timeline> {
 
       print("分析結果: $analysisResult"); // デバッグ用
 
-      // 攻撃的またはグレーゾーンが55%以上の場合はfalse
-      return offensivePercentage < 55 && grayZonePercentage < 55;
+      // 攻撃的またはグレーゾーンが60%以上の場合はfalse
+      return offensivePercentage < 60 && grayZonePercentage < 60;
     } catch (e) {
       print('分析中にエラーが発生しました: $e');
       setState(() {
+        _grayZonePercentage = 0.0;
+        _offensivePercentage = 0.0;
+
         _result = 'エラーが発生しました: $e';
       });
       return true; // エラー時は安全とみなす
     }
   }
 
-  Future<bool> _showNVCFeedBack(String originalContent) async {
+  Future<bool> _showNVCFeedBack(String originalContent,double offensivePercentage,double grayZonePercentage) async {
     final Map<String, dynamic>? result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NvcFeedbackPage(originalContent: originalContent),
+        builder: (context) => NvcFeedbackPage(originalContent: originalContent,offensivePercentage: offensivePercentage,grayZonePercentage: grayZonePercentage),
       ),
     );
 
@@ -215,7 +225,7 @@ class _TimelineState extends State<Timeline> {
           print("攻撃的またはグレーゾーンが高い NVCフィードバックを表示");
 
           // _analyzeText内で攻撃性が高いと判断された場合
-          bool feedbackResult = await _showNVCFeedBack(_comment.description);
+          bool feedbackResult = await _showNVCFeedBack(_comment.description,_offensivePercentage,_grayZonePercentage);
 
           if (!feedbackResult) {
             print("ユーザーがフィードバックをキャンセル");
