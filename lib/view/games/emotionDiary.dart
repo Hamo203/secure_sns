@@ -7,12 +7,14 @@ import 'package:floating_bubbles/floating_bubbles.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:secure_sns/view/games/readingDiary.dart';
 
 import '../../model/diary.dart';
 import '../../model/emotionItem.dart';
 import '../../navigation.dart';
 import '../../services/image_service.dart';
 import '../account/user_auth.dart';
+import '../components/emotionlists.dart';
 
 class Emotiondiary extends StatefulWidget {
   const Emotiondiary({super.key});
@@ -109,14 +111,6 @@ class _EmotiondiaryState extends State<Emotiondiary> {
     }
   }
 
-  final List<Map<String, String>> emotions = [
-    {"emoji": "😊", "label": "しあわせ"},
-    {"emoji": "😢", "label": "悲しい"},
-    {"emoji": "😡", "label": "怒ってる"},
-    {"emoji": "😱", "label": "驚いた"},
-    {"emoji": "😴", "label": "疲れた"},
-  ];
-
   Widget _diaryStepContent() {
     switch (_currentStep) {
       case 0:
@@ -143,17 +137,7 @@ class _EmotiondiaryState extends State<Emotiondiary> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (_currentStep > 0) {
-          setState(() {
-            _currentStep--;
-          });
-          return false;
-        }
-        return true;
-      },
-      child: Scaffold(
+    return Scaffold(
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Container(
@@ -192,8 +176,7 @@ class _EmotiondiaryState extends State<Emotiondiary> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _diaryZeroStep() {
@@ -222,6 +205,7 @@ class _EmotiondiaryState extends State<Emotiondiary> {
               fit: BoxFit.contain,
             ),
           ),
+          //書いてみるボタン
           Container(
             width: screenWidth * 0.7,
             child: TextButton(
@@ -251,6 +235,40 @@ class _EmotiondiaryState extends State<Emotiondiary> {
               ),
             ),
           ),
+          SizedBox(height: screenHeight*0.02,),
+          //読んでみるボタン
+          Container(
+            width: screenWidth * 0.7,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Color(0xFFC5D8E7),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                minimumSize: Size(screenWidth * 0.4, screenHeight * 0.07),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Readingdiary(userid: userAuth.currentUser!.uid),
+                  ),
+                );
+              },
+              child: Center(
+                child: Text(
+                  'にっきをよむ',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: screenWidth * 0.1,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    height: 0,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -260,22 +278,7 @@ class _EmotiondiaryState extends State<Emotiondiary> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    final List<EmotionItem> emotionItems = [
-      EmotionItem(name: "うれしい", imagePath: 'images/catface/ureshii.png'),
-      EmotionItem(name: "おもしろい", imagePath: 'images/catface/omoshiroi.png'),
-      EmotionItem(name: "わくわく", imagePath: 'images/catface/wakuwaku.png'),
-      EmotionItem(name: "どきどき", imagePath: 'images/catface/dokidoki.png'),
-      EmotionItem(name: "たのしい", imagePath: 'images/catface/tanoshi.png'),
-      EmotionItem(name: "あんしん", imagePath: 'images/catface/anshin.png'),
-      EmotionItem(name: "びっくり", imagePath: 'images/catface/bikkuri.png'),
-      EmotionItem(name: "かなしい", imagePath: 'images/catface/kanashi.png'),
-      EmotionItem(name: "いらいら", imagePath: 'images/catface/iraira.png'),
-      EmotionItem(name: "いや", imagePath: 'images/catface/iya.png'),
-      EmotionItem(name: "さみしい", imagePath: 'images/catface/samishi.png'),
-      EmotionItem(name: "こわい", imagePath: 'images/catface/kowai.png'),
-      EmotionItem(name: "つかれた", imagePath: 'images/catface/tsukareta.png'),
-      EmotionItem(name: "おちこむ", imagePath: 'images/catface/ochikomu.png')
-    ];
+
     return Column(
       children: [
         SizedBox(height: screenHeight * 0.03),
