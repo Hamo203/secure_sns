@@ -8,7 +8,8 @@ class OffensiveClassifier {
   final ApiService apiService;
   final BuildContext context;
 
-  //攻撃性スコアとグレイゾーンのスコア用の変数
+  //それぞれの割合を入れておく変数
+  double nonOffensivePercentage=0.0;
   double offensivePercentage=0.0;
   double grayZonePercentage=0.0;
 
@@ -33,12 +34,13 @@ class OffensiveClassifier {
       Map<String, String> analysisResult = await apiService.classifyText(message);
 
       // '%' を除去してから double に変換
+      nonOffensivePercentage= _parsePercentage(analysisResult['non_offensive']);
       offensivePercentage = _parsePercentage(analysisResult['offensive']);
       grayZonePercentage = _parsePercentage(analysisResult['gray_zone']);
 
       // 結果を更新
       updateResult('''
-        攻撃的でない発言: ${analysisResult['non_offensive']}%
+        攻撃的でない発言: ${nonOffensivePercentage}%
         グレーゾーンの発言: ${grayZonePercentage}%
         攻撃的な発言: ${offensivePercentage}%
         ''');
@@ -46,7 +48,7 @@ class OffensiveClassifier {
 
       // 攻撃的な発言が55%以上、またはグレーゾーンの発言が55%以上の場合
       if (offensivePercentage > 55 || grayZonePercentage > 55) {
-        bool userConfirmed = await _showNVCFeedBack(offensivePercentage, grayZonePercentage, message);
+        bool userConfirmed = await _showNVCFeedBack(nonOffensivePercentage,offensivePercentage, grayZonePercentage, message);
         return userConfirmed;
       } else {
         // 問題なければtrue
@@ -59,12 +61,12 @@ class OffensiveClassifier {
     }
   }
 
-  Future<bool> _showNVCFeedBack(double offensive, double grayZone, String originalContent) async {
+  Future<bool> _showNVCFeedBack(double nonOffensive,double offensive, double grayZone, String originalContent) async {
     print("攻撃的: $offensive, グレーゾーン: $grayZone");
     final bool? result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NvcFeedbackPage(originalContent: originalContent,offensivePercentage: offensivePercentage,grayZonePercentage: grayZonePercentage),
+        builder: (context) => NvcFeedbackPage(originalContent: originalContent,nonOffensivePercentage: nonOffensive, offensivePercentage: offensive,grayZonePercentage: grayZone),
       ),
     );
 

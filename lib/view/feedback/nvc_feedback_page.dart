@@ -2,17 +2,20 @@ import 'dart:async';
 
 import 'package:floating_bubbles/floating_bubbles.dart';
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 import '../../api/gemma_api.dart';
 
 class NvcFeedbackPage extends StatefulWidget {
   //ユーザが最初に入力したことば
   final String originalContent;
+  final double nonOffensivePercentage;
   final double offensivePercentage;
   final double grayZonePercentage;
 
   const NvcFeedbackPage({
     required this.originalContent,
+    required this.nonOffensivePercentage,
     required this.offensivePercentage,
     required this.grayZonePercentage,
     Key? key,
@@ -30,6 +33,7 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
   final GemmaApi gemmaApi = GemmaApi();
 
   String? _selectedSuggestion;
+  double badscore=0;
 
   void initState(){
     super.initState();
@@ -100,6 +104,7 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
     Size screenSize = MediaQuery.of(context).size;
     String text="そのことば\n大丈夫かな？";
     if(widget.grayZonePercentage>55) text ="ちょっと言い方\nかえてみない？";
+    badscore=(widget.grayZonePercentage*0.5+widget.offensivePercentage)*100/150;
 
     return Stack(
       children: [
@@ -142,9 +147,22 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
                     ),
                     SizedBox(height: 40),
                     Text(
+                      //注意喚起用テキスト
                       text,
                       style: TextStyle(fontSize: 24),
                       textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 40),
+                    Text(
+                      "こうげきてき スコア",
+                      style: TextStyle(fontSize: 24),
+                      textAlign: TextAlign.center,
+                    ),
+                    SfLinearGauge(
+                      minimum: 0,
+                      maximum: 100,
+                      orientation: LinearGaugeOrientation.horizontal,
+                      barPointers: [LinearBarPointer(value: badscore)],
                     ),
                   ],
                 ),

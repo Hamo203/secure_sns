@@ -42,6 +42,7 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
   late ImageService imageService; // ImageServiceのインスタンスを追加
 
   //攻撃的またはグレーゾーンの値
+  double nonOffensivePercentage=0.0;
   double offensivePercentage=0.0;
   double grayZonePercentage=0.0;
 
@@ -118,7 +119,7 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
     if (!isSafe) {
       print("攻撃性またはグレーゾーンが高い フィードバックを実行");
 
-      bool feedbackResult = await _showNVCFeedBack(message.text,offensivePercentage,grayZonePercentage);
+      bool feedbackResult = await _showNVCFeedBack(message.text,nonOffensivePercentage,offensivePercentage,grayZonePercentage);
 
       if (!feedbackResult) {
         print("フィードバックをキャンセル");
@@ -241,13 +242,14 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
       Map<String, String> analysisResult = await offensiveClassifier.apiService.classifyText(message);
 
       // '%' を除去してから double に変換
+      nonOffensivePercentage=double.parse(analysisResult['non_offensive']!.replaceAll('%', '').trim());
       offensivePercentage = double.parse(analysisResult['offensive']!.replaceAll('%', '').trim());
       grayZonePercentage = double.parse(analysisResult['gray_zone']!.replaceAll('%', '').trim());
 
       // 結果を表示
       setState(() {
         _result = '''
-      攻撃的でない発言: ${analysisResult['non_offensive']}%
+      攻撃的でない発言: ${nonOffensivePercentage}%
       グレーゾーンの発言: ${grayZonePercentage}%
       攻撃的な発言: ${offensivePercentage}%
       ''';
@@ -266,11 +268,11 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
     }
   }
 
-  Future<bool> _showNVCFeedBack(String originalContent,double offensivePercentage,double grayZonePercentage) async {
+  Future<bool> _showNVCFeedBack(String originalContent,double nonOffensive,double offensive,double grayZone) async {
     final Map<String, dynamic>? result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NvcFeedbackPage(originalContent: originalContent,offensivePercentage: offensivePercentage,grayZonePercentage: grayZonePercentage),
+        builder: (context) => NvcFeedbackPage(originalContent: originalContent,nonOffensivePercentage: nonOffensive, offensivePercentage: offensive,grayZonePercentage: grayZone),
       ),
     );
 
