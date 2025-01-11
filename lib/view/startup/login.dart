@@ -98,7 +98,7 @@ class _LoginState extends State<Login> {
                           children: [
                             // タイトル
                             Text(
-                              'Pals Placeでログイン',
+                              'Palceでログイン',
                               style: TextStyle(
                                 color: Colors.black,
                                 fontSize: screenWidth * 0.07,

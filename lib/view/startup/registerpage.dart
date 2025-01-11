@@ -91,7 +91,7 @@ class _RegisterpageState extends State<Registerpage> {
                       width: screenWidth * 0.6, // 画面幅の60%
                       height: screenHeight * 0.5, // 画面高さの10%
                       child: Text(
-                        'Pals Place',
+                        'Palce',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: screenWidth * 0.1, // 画面幅の10%
