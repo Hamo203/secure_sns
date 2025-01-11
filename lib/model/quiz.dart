@@ -1,12 +1,9 @@
-
 class Quiz {
   final int id;
   final String scenario;
   final String question;
   final List<QuizOption> options;
-  final String explanation;
-
-  // 画面上で使うロックフラグや選択されたOptionを持たせる場合
+  final String? explanation;
   bool isLocked;
   QuizOption? selectedOption;
 
@@ -15,41 +12,52 @@ class Quiz {
     required this.scenario,
     required this.question,
     required this.options,
-    required this.explanation,
+    this.explanation,
     this.isLocked = false,
     this.selectedOption,
   });
 
-  // JSON から Quiz インスタンスを生成するためのファクトリコンストラクタ
   factory Quiz.fromJson(Map<String, dynamic> json) {
+    var optionsJson = json['options'] as List<dynamic>? ?? []; // 存在しない場合は空リスト
+    List<QuizOption> options =
+    optionsJson.map((o) => QuizOption.fromJson(o)).toList();
+
     return Quiz(
-      id: json['id'],
-      scenario: json['scenario'],
-      question: json['question'],
-      explanation: json['explanation'],
-      options: (json['options'] as List<dynamic>)
-          .map((optionJson) => QuizOption.fromJson(optionJson))
-          .toList(),
+      id: json['id'] != null ? int.tryParse(json['id'].toString()) ?? 0 : 0,
+      scenario: json['scenario']?.toString() ?? '',
+      question: json['question']?.toString() ?? '',
+      options: options,
+      explanation: json['explanation']?.toString(),
     );
+  }
+
+  // isCorrect があったら多肢選択と見なす
+  bool get isMultipleChoice {
+    return options.any((option) => option.isCorrect != null);
   }
 }
 
 class QuizOption {
-  final String id;       // A, B, C ...
-  final String text;     // "楽しい", "悲しい" ...
-  final bool isCorrect;  // true or false
+  final String id;
+  final String text;
+  final bool? isCorrect;
+  final String? feedback;
 
-  const QuizOption({
+  QuizOption({
     required this.id,
     required this.text,
-    required this.isCorrect,
+    this.isCorrect,
+    this.feedback,
   });
 
   factory QuizOption.fromJson(Map<String, dynamic> json) {
     return QuizOption(
-      id: json['id'],
-      text: json['text'],
-      isCorrect: json['isCorrect'],
+      id: json['id']?.toString() ?? '',
+      text: json['text']?.toString() ?? '',
+      isCorrect: json['isCorrect'] as bool?,
+      feedback: json['feedback']?.toString(),  // 存在しなければ null
     );
   }
 }
+
+

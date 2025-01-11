@@ -5,9 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:secure_sns/FirestoreSave.dart';
 import 'package:secure_sns/view/account/accountpage.dart';
 import 'package:secure_sns/view/account/user_auth.dart';
+import 'package:secure_sns/view/games/questiongame.dart';
 import 'package:secure_sns/view/talk/chatroom.dart';
 import 'package:secure_sns/view/timeline/postpage.dart';
 import 'package:secure_sns/view/timeline/timeline.dart';
+
+import 'view/games/emotionDiary.dart';
+import 'view/games/quizScreen.dart';
 
 class Navigation extends StatefulWidget {
   const Navigation({super.key});
@@ -26,10 +30,12 @@ class _NavigationState extends State<Navigation> {
     //Personalページはuseridがログイン者になるように指定する
     auth = userAuth.currentUser!.uid;
     pagelist = [
-      Timeline(),
+      //Timeline(),
+      Emotiondiary(),
       Postpage(),
       Accountpage(userid: auth),
-      Chatroom()
+      Chatroom(),
+      QuizScreen()
     ];
   }
 
@@ -37,6 +43,7 @@ class _NavigationState extends State<Navigation> {
   Widget build(BuildContext context) {
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body:pagelist[selectedIndex],
       bottomNavigationBar: CurvedNavigationBar(
         backgroundColor: Colors.blueAccent,
@@ -56,6 +63,10 @@ class _NavigationState extends State<Navigation> {
           CurvedNavigationBarItem(
               child: Icon(Icons.message),
               label: 'Message'),
+
+          CurvedNavigationBarItem(
+              child: Icon(Icons.message),
+              label: 'ゲーム'),
         ],
         onTap: (index) {
           setState(() {

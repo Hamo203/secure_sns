@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:secure_sns/navigation.dart';
 import 'package:secure_sns/repositories/textComquiz_repository.dart';
 import 'package:secure_sns/repositories/feelquiz_repository.dart';
 import 'package:secure_sns/repositories/schoolquiz_repository.dart';
@@ -39,6 +40,8 @@ class _QuizScreenState extends State<QuizScreen> {
   // 選択したらロック（Nextボタンを出す）
   bool _isLocked = false;
 
+  int flag =0;
+
   @override
   void initState() {
     super.initState();
@@ -46,7 +49,7 @@ class _QuizScreenState extends State<QuizScreen> {
     _loadQuizzes();
   }
 
-  /// 各カテゴリーのクイズをすべて読み込む
+  //クイズよみこみ
   Future<void> _loadQuizzes() async {
     final schoolquizzes = await _schoolquizRepository.fetchQuizzes();
     final textquizzes = await _textquizRepository.fetchQuizzes();
@@ -55,7 +58,6 @@ class _QuizScreenState extends State<QuizScreen> {
       _schoolquizzes = schoolquizzes;
       _textquizzes = textquizzes;
       _feelquizzes = feelquizzes;
-      // 初期状態ではまだカテゴリーを選択していないので、_activeQuizzesは空のまま
     });
   }
 
@@ -64,7 +66,7 @@ class _QuizScreenState extends State<QuizScreen> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    // すべてのカテゴリーが読み込まれるまで待つ
+    // クイズが読み込まれるまで表示
     if (_schoolquizzes.isEmpty || _textquizzes.isEmpty || _feelquizzes.isEmpty) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -114,7 +116,9 @@ class _QuizScreenState extends State<QuizScreen> {
                 // PageView: 開始画面＋クイズ問題
                 child: PageView.builder(
                   controller: _pageController,
-                  itemCount: (_activeQuizzes.isNotEmpty ? _activeQuizzes.length : 0) + 1,
+                  itemCount:
+                  (_activeQuizzes.isNotEmpty ? _activeQuizzes.length : 0) +
+                      1, // 開始画面1ページ＋問題数
                   physics: const NeverScrollableScrollPhysics(),
                   onPageChanged: (index) {
                     setState(() {
@@ -125,7 +129,6 @@ class _QuizScreenState extends State<QuizScreen> {
                     if (index == 0) {
                       return _buildStartPage();
                     } else {
-                      // _activeQuizzesがまだ設定されていれば表示
                       final quiz = _activeQuizzes[index - 1];
                       return _buildQuizPage(quiz);
                     }
@@ -144,7 +147,7 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  /// 開始画面のUI（複数のカテゴリー選択ボタンを含む）
+  // 開始画面のUI
   Widget _buildStartPage() {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -164,7 +167,7 @@ class _QuizScreenState extends State<QuizScreen> {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: screenHeight * 0.06),
-          // 各カテゴリーに対応するスタートボタン
+          // ランダムに5問取得
           Container(
             width: screenWidth * 0.7,
             height: screenHeight * 0.08,
@@ -173,9 +176,11 @@ class _QuizScreenState extends State<QuizScreen> {
                 backgroundColor: const Color(0xFFF6CBD1),
               ),
               onPressed: () {
-                // 「かんじょう」クイズを選択
                 setState(() {
-                  _activeQuizzes = _feelquizzes;
+                  flag=1;
+                  _activeQuizzes = List<Quiz>.from(_feelquizzes)
+                    ..shuffle(); // リストをシャッフル
+                  _activeQuizzes = _activeQuizzes.take(5).toList(); // 先頭5問を取得
                 });
                 _pageController.nextPage(
                   duration: const Duration(milliseconds: 300),
@@ -201,9 +206,12 @@ class _QuizScreenState extends State<QuizScreen> {
                 backgroundColor: const Color(0xFFF9E4C8),
               ),
               onPressed: () {
-                // 「日常でのコミュニケーション」クイズを選択
+                // ランダムに5問取得
                 setState(() {
-                  _activeQuizzes = _schoolquizzes;
+                  flag=2;
+                  _activeQuizzes = List<Quiz>.from(_schoolquizzes)
+                    ..shuffle();
+                  _activeQuizzes = _activeQuizzes.take(5).toList();
                 });
                 _pageController.nextPage(
                   duration: const Duration(milliseconds: 300),
@@ -229,9 +237,12 @@ class _QuizScreenState extends State<QuizScreen> {
                 backgroundColor: const Color(0xFFC5D8E7),
               ),
               onPressed: () {
-                // 「テキストコミュニケーション」クイズを選択
+                // ランダムに5問取得
                 setState(() {
-                  _activeQuizzes = _textquizzes;
+                  flag=3;
+                  _activeQuizzes = List<Quiz>.from(_textquizzes)
+                    ..shuffle();
+                  _activeQuizzes = _activeQuizzes.take(5).toList();
                 });
                 _pageController.nextPage(
                   duration: const Duration(milliseconds: 300),
@@ -253,7 +264,8 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  /// クイズページのUIを構築
+
+  // クイズページのUIを構築
   Widget _buildQuizPage(Quiz quiz) {
     return SingleChildScrollView(
       child: Padding(
@@ -284,14 +296,13 @@ class _QuizScreenState extends State<QuizScreen> {
                       quiz.isLocked = true;
                       quiz.selectedOption = option;
                       _isLocked = true;
-                      // 正解の場合スコアを加算（isCorrectがnullの場合はfalseとする）
                       if (option.isCorrect ?? false) {
                         _score++;
                       }
                     });
                   },
                   child: Container(
-                    height: 50,
+                    height: 90,
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -302,7 +313,10 @@ class _QuizScreenState extends State<QuizScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(option.text, style: const TextStyle(fontSize: 20)),
+                        Expanded(
+                          child: Text(option.text,
+                              style: const TextStyle(fontSize: 20)),
+                        ),
                         _getIconForOption(option, quiz),
                       ],
                     ),
@@ -311,11 +325,19 @@ class _QuizScreenState extends State<QuizScreen> {
               }).toList(),
             ),
             const SizedBox(height: 24),
-            // 回答がロックされたら解説を表示
+            // 回答がロックされたら、複数選択（正解あり）なら解説を、
+            // それ以外（フィードバック型）の場合は選択肢のfeedbackを表示する
             if (quiz.isLocked)
-              Text(
+              quiz.isMultipleChoice
+                  ? Text(
                 "解説: ${quiz.explanation}",
-                style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
+                style:
+                const TextStyle(fontSize: 16, color: Colors.blueGrey),
+              )
+                  : Text(
+                " ${quiz.selectedOption?.feedback ?? ''}",
+                style:
+                const TextStyle(fontSize: 16, color: Colors.blueGrey),
               ),
           ],
         ),
@@ -323,9 +345,8 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  /// Next/ResultボタンのUIを構築
+  // Next/ResultボタンのUIを構築
   Widget _buildNextButton() {
-    // 最後の問題かどうか（現在のページが最後のクイズのページの場合）
     final isLastQuestion = (_currentPageIndex == _activeQuizzes.length);
     return ElevatedButton(
       onPressed: () {
@@ -341,18 +362,24 @@ class _QuizScreenState extends State<QuizScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => ResultPage(score: _score, total: _activeQuizzes.length),
+              builder: (_) => ResultPage(
+                  score: _score, total: _activeQuizzes.length,flag: flag),
             ),
           );
         }
       },
-      child: Text(isLastQuestion ? '結果を見る' : '次へ'),
+      child:
+      Text(isLastQuestion ? '結果を見る' : '次へ'),
     );
   }
 
-  /// 選択肢の枠線色を返す（正解の場合は緑、不正解の場合は赤）
+  //選択肢の枠線色を返す（正解の場合は緑、不正解の場合は赤）
   Color _getColorForOption(QuizOption option, Quiz quiz) {
     if (!quiz.isLocked) return Colors.grey.shade300;
+    // もし isCorrect が null かつ feedback が存在する場合は、色は変更しない
+    if ((option.isCorrect == null) && (option.feedback != null)) {
+      return Colors.grey.shade300;
+    }
     if (option == quiz.selectedOption) {
       return (option.isCorrect ?? false) ? Colors.green : Colors.red;
     } else if (option.isCorrect ?? false) {
@@ -361,9 +388,13 @@ class _QuizScreenState extends State<QuizScreen> {
     return Colors.grey.shade300;
   }
 
-  /// 選択肢の右側アイコンのUIを構築（正解の場合はチェック、誤答ならキャンセルアイコン）
+  // 正解の場合はチェック 誤答ならキャンセル
   Widget _getIconForOption(QuizOption option, Quiz quiz) {
     if (!quiz.isLocked) return const SizedBox.shrink();
+    // isCorrect がnull かつ feedback が存在 => アイコンは表示しない
+    if ((option.isCorrect == null) && (option.feedback != null)) {
+      return const SizedBox.shrink();
+    }
     if (option == quiz.selectedOption) {
       return (option.isCorrect ?? false)
           ? const Icon(Icons.check_circle, color: Colors.green)
@@ -375,25 +406,74 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 }
 
-/// 結果画面
+// 結果画面
 class ResultPage extends StatelessWidget {
   final int score;
   final int total;
-  const ResultPage({Key? key, required this.score, required this.total})
-      : super(key: key);
+  final int flag;
+  const ResultPage({
+    Key? key,
+    required this.score,
+    required this.total,
+    required this.flag,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('結果'),
-      ),
-      body: Center(
-        child: Text(
-          'あなたのスコアは $score/$total です！',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    if (flag != 1) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('結果'),
         ),
-      ),
-    );
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'あなたのスコアは $score/$total です！',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => Navigation()),
+                  );
+                },
+                child: const Text('最初に戻る'),
+              )
+
+            ],
+          ),
+        ),
+      );
+    } else {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'かんじょうを言葉であらわせたね！',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => Navigation()),
+                  );
+                },
+                child: const Text('最初に戻る'),
+              )
+
+            ],
+          ),
+        ),
+      );
+    }
   }
 }
+
