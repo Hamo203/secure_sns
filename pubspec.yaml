@@ -49,6 +49,7 @@ dependencies:
   natural_language: ^0.0.3
   flutter_dotenv: ^5.1.0
   floating_bubbles: ^2.6.2
+  syncfusion_flutter_gauges: ^28.1.33
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -89,6 +90,9 @@ flutter:
     - images/
     - .env
     - images/face/
+    - images/color/
+    - images/catface/
+    - assets/quizzes/
 
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
