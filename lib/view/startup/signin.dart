@@ -95,7 +95,7 @@ class _SigninState extends State<Signin> {
                       children: [
                         // アプリ名
                         Text(
-                          'Pals Place',
+                          'Palce',
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: screenWidth * 0.1,
