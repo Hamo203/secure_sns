@@ -156,7 +156,8 @@ class _ReadingdiaryState extends State<Readingdiary> {
                                     width: screenWidth*0.1,
                                   ),
                                   SizedBox(width: screenWidth*0.01,),
-                                  Text("${diarylist[index].emotion}"),
+                                  Text("${diarylist[index].emotion}",
+                                    style:TextStyle(fontSize: screenHeight*0.03) ,),
                                 ],
                               ),
                               //投稿削除用のボタン
@@ -198,8 +199,41 @@ class _ReadingdiaryState extends State<Readingdiary> {
                             title:Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children:[
+                                Row(
+                                  children: [
+                                    Text("どこで: ",
+                                      style: TextStyle(
+                                          color: Colors.black54,
+                                        fontSize: screenHeight*0.02
+                                      ),),
+                                    Text("${diarylist[index].place}",
+                                      style: TextStyle(
+                                          color: Colors.black87,
+                                          fontSize: screenHeight*0.025
+                                      ),)
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    Text("やったこと: ",
+                                      style: TextStyle(
+                                        color: Colors.black54,
+                                        fontSize: screenHeight*0.02
+                                    ),),
+                                    Text("${diarylist[index].description}",
+                                      style: TextStyle(
+                                          color: Colors.black87,
+                                          fontSize: screenHeight*0.025
+                                      ),)
+                                  ],
+                                ),
+                                SizedBox(height: screenHeight*0.01,),
                                 //投稿内容
-                                Text(diarylist[index].emotionreason),
+                                Text("どうしてそう感じたの？: ",style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: screenHeight*0.02
+                                ),),
+                                Text("${diarylist[index].emotionreason}"),
                                 // 画像が存在する場合のみ表示
                                 if (diarylist[index].imagePath!="imageurl")
                                   Image.network(diarylist[index].imagePath),
