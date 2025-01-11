@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:secure_sns/repositories/textComquiz_repository.dart';
+import 'package:secure_sns/repositories/feelquiz_repository.dart';
+import 'package:secure_sns/repositories/schoolquiz_repository.dart';
 
 import '../../model/quiz.dart';
-import '../../repositories/quiz_repository.dart';
 // Quiz/QuizOptionモデル
 
 class QuizScreen extends StatefulWidget {
@@ -12,21 +14,29 @@ class QuizScreen extends StatefulWidget {
 }
 
 class _QuizScreenState extends State<QuizScreen> {
-  // Repository (JSON読み込み担当)
-  final _quizRepository = QuizRepository();
-  // 取得したクイズリスト
-  List<Quiz> _quizzes = [];
+  // 各カテゴリーのクイズリスト
+  final _schoolquizRepository = SchoolquizRepository();
+  List<Quiz> _schoolquizzes = [];
 
-  // PageView 用コントローラ
+  final _textquizRepository = TextcomquizRepository();
+  List<Quiz> _textquizzes = [];
+
+  final _feelquizRepository = FeelquizRepository();
+  List<Quiz> _feelquizzes = [];
+
+  // 現在選択されている（＝アクティブな）クイズリスト
+  List<Quiz> _activeQuizzes = [];
+
+  // PageView用コントローラ
   late PageController _pageController;
 
   // 現在のページのインデックス（0が開始画面）
   int _currentPageIndex = 0;
 
-  // スコア(正解数)
+  // スコア（正解数）
   int _score = 0;
 
-  // 選択肢ロックフラグ（選択後に「Next」ボタンを出す）
+  // 選択したらロック（Nextボタンを出す）
   bool _isLocked = false;
 
   @override
@@ -36,91 +46,137 @@ class _QuizScreenState extends State<QuizScreen> {
     _loadQuizzes();
   }
 
-  /// JSONからクイズを読み込む
+  /// 各カテゴリーのクイズをすべて読み込む
   Future<void> _loadQuizzes() async {
-    final quizzes = await _quizRepository.fetchQuizzes();
+    final schoolquizzes = await _schoolquizRepository.fetchQuizzes();
+    final textquizzes = await _textquizRepository.fetchQuizzes();
+    final feelquizzes = await _feelquizRepository.fetchQuizzes();
     setState(() {
-      _quizzes = quizzes;
+      _schoolquizzes = schoolquizzes;
+      _textquizzes = textquizzes;
+      _feelquizzes = feelquizzes;
+      // 初期状態ではまだカテゴリーを選択していないので、_activeQuizzesは空のまま
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // 読み込み中はインジケータを表示
-    if (_quizzes.isEmpty) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight = MediaQuery.of(context).size.height;
+
+    // すべてのカテゴリーが読み込まれるまで待つ
+    if (_schoolquizzes.isEmpty || _textquizzes.isEmpty || _feelquizzes.isEmpty) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    // 読み込み後のクイズ画面
     return Scaffold(
-      appBar: AppBar(title: const Text('クイズ')),
-      body: Column(
+      body: Stack(
         children: [
-          const SizedBox(height: 10),
-          // 現在のページ番号 / 全ページ数
-          _currentPageIndex == 0
-              ? Text('Welcome to the Quiz!')
-              : Text('Question $_currentPageIndex/${_quizzes.length}'),
-          const Divider(thickness: 1, color: Colors.grey),
-          Expanded(
-            // PageViewで複数問題をページ切り替え
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: _quizzes.length + 1, // 開始画面を追加
-              physics: const NeverScrollableScrollPhysics(), // スワイプ操作禁止
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPageIndex = index;
-                });
-              },
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  // 開始画面
-                  return _buildStartPage();
-                } else {
-                  // クイズページ
-                  final quiz = _quizzes[index - 1];
-                  return _buildQuizPage(quiz);
-                }
-              },
+          // 背景の青い丸（左上）
+          Align(
+            alignment: const Alignment(-1.5, -1.1),
+            child: Container(
+              width: screenWidth * 0.4,
+              height: screenHeight * 0.2,
+              decoration: const ShapeDecoration(
+                color: Color(0xFFC5D8E7),
+                shape: OvalBorder(),
+              ),
             ),
           ),
-          // 選択肢をロックしたら次ボタンを表示
-          _currentPageIndex != 0 && _isLocked
-              ? _buildNextButton()
-              : (_currentPageIndex == 0
-              ? _buildStartButton()
-              : const SizedBox.shrink()),
-          const SizedBox(height: 20),
+          // 背景のオレンジの丸（右下）
+          Align(
+            alignment: const Alignment(1.5, 1.8),
+            child: Container(
+              width: screenWidth * 0.5,
+              height: screenHeight * 0.3,
+              decoration: const ShapeDecoration(
+                color: Color(0xFFF9E4C8),
+                shape: OvalBorder(),
+              ),
+            ),
+          ),
+          // 全体はStackで重ねつつ、PageViewなどを配置
+          Column(
+            children: [
+              SizedBox(height: screenHeight * 0.1),
+              // 現在のページ番号 / 全ページ数（開始画面以降のみ表示）
+              _currentPageIndex == 0
+                  ? const SizedBox.shrink()
+                  : Text(
+                'Question $_currentPageIndex/${_activeQuizzes.length}',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const Divider(thickness: 1, color: Colors.grey),
+              Expanded(
+                // PageView: 開始画面＋クイズ問題
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: (_activeQuizzes.isNotEmpty ? _activeQuizzes.length : 0) + 1,
+                  physics: const NeverScrollableScrollPhysics(),
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentPageIndex = index;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return _buildStartPage();
+                    } else {
+                      // _activeQuizzesがまだ設定されていれば表示
+                      final quiz = _activeQuizzes[index - 1];
+                      return _buildQuizPage(quiz);
+                    }
+                  },
+                ),
+              ),
+              // ボタン表示（クイズページで解答済みならNextボタンを表示）
+              _currentPageIndex != 0 && _isLocked
+                  ? _buildNextButton()
+                  : const SizedBox.shrink(),
+              const SizedBox(height: 20),
+            ],
+          )
         ],
       ),
     );
   }
 
-  /// 開始画面のUIを構築
+  /// 開始画面のUI（複数のカテゴリー選択ボタンを含む）
   Widget _buildStartPage() {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight = MediaQuery.of(context).size.height;
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'クイズへようこそ！',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '友達とのコミュニケーションを学ぶクイズです。スタートボタンを押して始めましょう！',
-              style: TextStyle(fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'NVCクイズへようこそ！',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'ともだちとの\nコミュニケーション方法をまなぼう！',
+            style: TextStyle(fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: screenHeight * 0.06),
+          // 各カテゴリーに対応するスタートボタン
+          Container(
+            width: screenWidth * 0.7,
+            height: screenHeight * 0.08,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: const Color(0xFFF6CBD1),
+              ),
               onPressed: () {
+                // 「かんじょう」クイズを選択
+                setState(() {
+                  _activeQuizzes = _feelquizzes;
+                });
                 _pageController.nextPage(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeIn,
@@ -129,10 +185,70 @@ class _QuizScreenState extends State<QuizScreen> {
                   _currentPageIndex = 1;
                 });
               },
-              child: const Text('スタート'),
+              child: Text(
+                'かんじょうをせいりしよう！',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: screenWidth * 0.04),
+              ),
             ),
-          ],
-        ),
+          ),
+          SizedBox(height: screenHeight * 0.04),
+          Container(
+            width: screenWidth * 0.7,
+            height: screenHeight * 0.08,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: const Color(0xFFF9E4C8),
+              ),
+              onPressed: () {
+                // 「日常でのコミュニケーション」クイズを選択
+                setState(() {
+                  _activeQuizzes = _schoolquizzes;
+                });
+                _pageController.nextPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeIn,
+                );
+                setState(() {
+                  _currentPageIndex = 1;
+                });
+              },
+              child: Text(
+                '日常での\nコミュニケーションをまなぼう！',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: screenWidth * 0.04),
+              ),
+            ),
+          ),
+          SizedBox(height: screenHeight * 0.04),
+          Container(
+            width: screenWidth * 0.7,
+            height: screenHeight * 0.08,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: const Color(0xFFC5D8E7),
+              ),
+              onPressed: () {
+                // 「テキストコミュニケーション」クイズを選択
+                setState(() {
+                  _activeQuizzes = _textquizzes;
+                });
+                _pageController.nextPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeIn,
+                );
+                setState(() {
+                  _currentPageIndex = 1;
+                });
+              },
+              child: Text(
+                'テキストコミュニケーションを\nまなぼう！',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: screenWidth * 0.04),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -145,36 +261,31 @@ class _QuizScreenState extends State<QuizScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // シナリオ (例: 「画像(雨の中...)」などの説明文)
+            // シナリオ
             Text(
               quiz.scenario,
               style: const TextStyle(fontSize: 20, color: Colors.blueGrey),
             ),
             const SizedBox(height: 16),
-
             // 問題文
             Text(
               quiz.question,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
-
             // 選択肢一覧
             Column(
               children: quiz.options.map((option) {
                 final color = _getColorForOption(option, quiz);
                 return GestureDetector(
                   onTap: () {
-                    // 既にロック済みなら何もしない
                     if (quiz.isLocked) return;
-
                     setState(() {
                       quiz.isLocked = true;
                       quiz.selectedOption = option;
-                      _isLocked = true; // 「Next」ボタンを出す
-
-                      // 正解の場合スコアを加算
-                      if (option.isCorrect) {
+                      _isLocked = true;
+                      // 正解の場合スコアを加算（isCorrectがnullの場合はfalseとする）
+                      if (option.isCorrect ?? false) {
                         _score++;
                       }
                     });
@@ -191,9 +302,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // 選択肢のテキスト
                         Text(option.text, style: const TextStyle(fontSize: 20)),
-                        // ○×アイコン
                         _getIconForOption(option, quiz),
                       ],
                     ),
@@ -201,9 +310,8 @@ class _QuizScreenState extends State<QuizScreen> {
                 );
               }).toList(),
             ),
-
             const SizedBox(height: 24),
-            // 回答がロックされたら解説を表示（任意）
+            // 回答がロックされたら解説を表示
             if (quiz.isLocked)
               Text(
                 "解説: ${quiz.explanation}",
@@ -215,44 +323,25 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  /// 開始画面の「スタート」ボタン
-  Widget _buildStartButton() {
-    return ElevatedButton(
-      onPressed: () {
-        _pageController.nextPage(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeIn,
-        );
-        setState(() {
-          _currentPageIndex = 1;
-        });
-      },
-      child: const Text('スタート'),
-    );
-  }
-
-  /// Next/Resultボタン
+  /// Next/ResultボタンのUIを構築
   Widget _buildNextButton() {
-    // 最後の問題かどうか
-    final isLastQuestion = (_currentPageIndex == _quizzes.length);
+    // 最後の問題かどうか（現在のページが最後のクイズのページの場合）
+    final isLastQuestion = (_currentPageIndex == _activeQuizzes.length);
     return ElevatedButton(
       onPressed: () {
         if (!isLastQuestion) {
-          // 次の問題へ
           _pageController.nextPage(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeIn,
           );
-          // 次のページに移動したらロック解除
           setState(() {
             _isLocked = false;
           });
         } else {
-          // 最終問題のあとは結果ページへ
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => ResultPage(score: _score, total: _quizzes.length),
+              builder: (_) => ResultPage(score: _score, total: _activeQuizzes.length),
             ),
           );
         }
@@ -261,31 +350,25 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  /// 選択肢の枠線色を返す
+  /// 選択肢の枠線色を返す（正解の場合は緑、不正解の場合は赤）
   Color _getColorForOption(QuizOption option, Quiz quiz) {
-    // 未選択(ロック前) → グレー
-    if (!quiz.isLocked) {
-      return Colors.grey.shade300;
-    }
-    // 回答ロック後
+    if (!quiz.isLocked) return Colors.grey.shade300;
     if (option == quiz.selectedOption) {
-      // 選ばれた選択肢が正解か不正解か
-      return option.isCorrect ? Colors.green : Colors.red;
-    } else if (option.isCorrect) {
-      // 正解の選択肢があれば緑表示
+      return (option.isCorrect ?? false) ? Colors.green : Colors.red;
+    } else if (option.isCorrect ?? false) {
       return Colors.green;
     }
     return Colors.grey.shade300;
   }
 
-  /// 選択肢の右側アイコン (正解:○, 不正解:×, 未選択:何もなし)
+  /// 選択肢の右側アイコンのUIを構築（正解の場合はチェック、誤答ならキャンセルアイコン）
   Widget _getIconForOption(QuizOption option, Quiz quiz) {
     if (!quiz.isLocked) return const SizedBox.shrink();
     if (option == quiz.selectedOption) {
-      return option.isCorrect
+      return (option.isCorrect ?? false)
           ? const Icon(Icons.check_circle, color: Colors.green)
           : const Icon(Icons.cancel, color: Colors.red);
-    } else if (option.isCorrect) {
+    } else if (option.isCorrect ?? false) {
       return const Icon(Icons.check_circle, color: Colors.green);
     }
     return const SizedBox.shrink();
