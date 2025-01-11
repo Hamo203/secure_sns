@@ -1,4 +1,6 @@
 class Diary {
+  String diaryid;
+
   DateTime createdDate;
   String place;
   String emotion;
@@ -14,6 +16,7 @@ class Diary {
 
   Diary(
       {
+        this.diaryid='',
         this.diaryAccount = '',
         required this.createdDate,
         this.place='',
