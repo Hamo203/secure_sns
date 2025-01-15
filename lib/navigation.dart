@@ -49,23 +49,23 @@ class _NavigationState extends State<Navigation> {
         backgroundColor: Colors.blueAccent,
         items: [
           CurvedNavigationBarItem(
-            child: Icon(Icons.home_outlined),
-            label: 'Timeline',
+            child: Icon(Icons.note_alt),
+            label: 'にっき',
           ),
           CurvedNavigationBarItem(
             child: Icon(Icons.chat_bubble_outline),
-            label: 'Post',
+            label: 'とうこう',
           ),
           CurvedNavigationBarItem(
             child: Icon(Icons.perm_identity),
-            label: 'Personal',
+            label: 'マイページ',
           ),
           CurvedNavigationBarItem(
               child: Icon(Icons.message),
-              label: 'Message'),
+              label: 'メッセージ'),
 
           CurvedNavigationBarItem(
-              child: Icon(Icons.message),
+              child: Icon(Icons.gamepad),
               label: 'ゲーム'),
         ],
         onTap: (index) {
