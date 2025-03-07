@@ -52,6 +52,7 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
 
       setState(() {
         suggestions = cleanedResponses;
+        suggestions.add(widget.originalContent);
         _currentStep = 2;
       });
     } catch (error) {
@@ -104,7 +105,14 @@ class _NvcFeedbackPageState extends State<NvcFeedbackPage> {
     Size screenSize = MediaQuery.of(context).size;
     String text="そのことば\n大丈夫かな？";
     if(widget.grayZonePercentage>55) text ="ちょっと言い方\nかえてみない？";
-    badscore=(widget.grayZonePercentage*0.5+widget.offensivePercentage)*100/150;
+    //攻撃的割合が大きいとき
+    if(widget.offensivePercentage>widget.grayZonePercentage)
+      badscore=(widget.grayZonePercentage*0.1+widget.offensivePercentage*0.7);
+
+    //グレーゾーンの割合が大きいとき
+    else if(widget.offensivePercentage<widget.grayZonePercentage)
+      badscore=(widget.grayZonePercentage*0.5+widget.offensivePercentage*0.1);
+
 
     return Stack(
       children: [
