@@ -1,3 +1,4 @@
+import 'package:floating_bubbles/floating_bubbles.dart';
 import 'package:flutter/material.dart';
 import 'package:secure_sns/navigation.dart';
 import 'package:secure_sns/repositories/textComquiz_repository.dart';
@@ -41,6 +42,8 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _isLocked = false;
 
   int flag =0;
+
+  bool _hasShownDialog = false;
 
   @override
   void initState() {
@@ -135,11 +138,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   },
                 ),
               ),
-              // ボタン表示（クイズページで解答済みならNextボタンを表示）
-              _currentPageIndex != 0 && _isLocked
-                  ? _buildNextButton()
-                  : const SizedBox.shrink(),
-              const SizedBox(height: 20),
+
             ],
           )
         ],
@@ -265,6 +264,59 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
 
+  Widget _buildFeedbackDialog(Quiz quiz) {
+    final isLastQuestion = (_currentPageIndex == _activeQuizzes.length);
+    _hasShownDialog = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('フィードバック'),
+            content: Text(
+              quiz.isMultipleChoice
+                  ? (quiz.explanation ?? '解説がありません')
+                  : (quiz.selectedOption?.feedback ?? 'フィードバックがありません'),
+              style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  // まずダイアログを閉じる
+                  Navigator.pop(context);
+
+                  // 次のページへ
+                  if (!isLastQuestion) {
+                    _pageController.nextPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeIn,
+                    );
+                    setState(() {
+                      _isLocked = false;
+                      _hasShownDialog = false;
+                    });
+                  } else {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ResultPage(
+                            score: _score, total: _activeQuizzes.length, flag: flag),
+                      ),
+                    );
+                  }
+                },
+                child: Text(isLastQuestion ? '結果を見る' : '次へ'),
+              )
+            ],
+          );
+        },
+      );
+    });
+    // ダイアログは後から表示するので、build上は何も表示しない
+    return const SizedBox.shrink();
+  }
+
+
   // クイズページのUIを構築
   Widget _buildQuizPage(Quiz quiz) {
     return SingleChildScrollView(
@@ -290,16 +342,77 @@ class _QuizScreenState extends State<QuizScreen> {
               children: quiz.options.map((option) {
                 final color = _getColorForOption(option, quiz);
                 return GestureDetector(
-                  onTap: () {
+                  onTap: () async {
+                    // 既に回答済みなら何もしない
                     if (quiz.isLocked) return;
+
+                    // 回答選択後の処理とロックをかける
                     setState(() {
                       quiz.isLocked = true;
                       quiz.selectedOption = option;
-                      _isLocked = true;
                       if (option.isCorrect ?? false) {
                         _score++;
                       }
                     });
+
+                    // ダイアログは各クイズごとに一度だけ表示する
+                    if (!quiz.hasShownDialog) {
+                      quiz.hasShownDialog = true;
+                      final isLastQuestion = (_currentPageIndex == _activeQuizzes.length);
+
+                      // ダイアログを表示（await で閉じるまで待つ）
+                      await showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          String titleText;
+                          if (quiz.selectedOption?.feedback != null) {
+                            titleText = '${quiz.selectedOption!.text} なんだね！';
+                          } else if (quiz.selectedOption?.isCorrect ?? false) {
+                            titleText = 'せいかい!';
+                          } else {
+                            titleText = 'ざんねん!';
+                          }
+                          return AlertDialog(
+                            title: Text(titleText),
+                            content: Text(
+                              quiz.isMultipleChoice
+                                  ? (quiz.explanation ?? '解説がありません')
+                                  : (quiz.selectedOption?.feedback ?? 'フィードバックがありません'),
+                              style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
+                            ),
+                            actions: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context); // ダイアログを閉じる
+                                },
+                                child: Text(isLastQuestion ? '結果を見る' : '次へ'),
+                              )
+                            ],
+                          );
+                        },
+                      );
+
+                      // ダイアログが閉じたら次の処理へ
+                      if (!isLastQuestion) {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeIn,
+                        );
+                        // 次の問題に移るので、その問題用のフラグは false のままになる
+                        setState(() {
+                          // ロック状態は各問題ごとに管理されるので、
+                          // 次ページでは新たに isLocked=false の状態になります
+                        });
+                      } else {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ResultPage(
+                                score: _score, total: _activeQuizzes.length, flag: flag),
+                          ),
+                        );
+                      }
+                    }
                   },
                   child: Container(
                     height: 90,
@@ -314,8 +427,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Text(option.text,
-                              style: const TextStyle(fontSize: 20)),
+                          child: Text(option.text, style: const TextStyle(fontSize: 20)),
                         ),
                         _getIconForOption(option, quiz),
                       ],
@@ -325,53 +437,12 @@ class _QuizScreenState extends State<QuizScreen> {
               }).toList(),
             ),
             const SizedBox(height: 24),
-            // 回答がロックされたら、複数選択（正解あり）なら解説を、
-            // それ以外（フィードバック型）の場合は選択肢のfeedbackを表示する
-            if (quiz.isLocked)
-              quiz.isMultipleChoice
-                  ? Text(
-                "解説: ${quiz.explanation}",
-                style:
-                const TextStyle(fontSize: 16, color: Colors.blueGrey),
-              )
-                  : Text(
-                " ${quiz.selectedOption?.feedback ?? ''}",
-                style:
-                const TextStyle(fontSize: 16, color: Colors.blueGrey),
-              ),
           ],
         ),
       ),
     );
   }
 
-  // Next/ResultボタンのUIを構築
-  Widget _buildNextButton() {
-    final isLastQuestion = (_currentPageIndex == _activeQuizzes.length);
-    return ElevatedButton(
-      onPressed: () {
-        if (!isLastQuestion) {
-          _pageController.nextPage(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeIn,
-          );
-          setState(() {
-            _isLocked = false;
-          });
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ResultPage(
-                  score: _score, total: _activeQuizzes.length,flag: flag),
-            ),
-          );
-        }
-      },
-      child:
-      Text(isLastQuestion ? '結果を見る' : '次へ'),
-    );
-  }
 
   //選択肢の枠線色を返す（正解の場合は緑、不正解の場合は赤）
   Color _getColorForOption(QuizOption option, Quiz quiz) {
@@ -420,6 +491,7 @@ class ResultPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Size screenSize = MediaQuery.of(context).size;
     if (flag != 1) {
       return Scaffold(
         appBar: AppBar(
@@ -454,21 +526,40 @@ class ResultPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Positioned.fill(
+                child: FloatingBubbles.alwaysRepeating(
+                  noOfBubbles: 25,
+                  colorsOfBubbles: [
+                    //背景の色
+                    Colors.red.withAlpha(30),
+                  ],
+                  sizeFactor: 0.16,
+                  opacity: 30,
+                  paintingStyle: PaintingStyle.fill,
+                  shape: BubbleShape.circle, //bubbleの形
+                  speed: BubbleSpeed.normal,
+                ),
+              ),
+              Image.asset(
+                'images/face/kirakira.png',
+                width: screenSize.width * 0.6,
+                height: screenSize.width * 0.6,
+              ),
               const Text(
                 'かんじょうを言葉であらわせたね！',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => Navigation()),
+                    MaterialPageRoute(builder: (_) => QuizScreen()),
                   );
                 },
                 child: const Text('最初に戻る'),
               )
-
             ],
           ),
         ),

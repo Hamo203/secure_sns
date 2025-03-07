@@ -6,6 +6,8 @@ class Quiz {
   final String? explanation;
   bool isLocked;
   QuizOption? selectedOption;
+  bool hasShownDialog ;
+
 
   Quiz({
     required this.id,
@@ -15,6 +17,7 @@ class Quiz {
     this.explanation,
     this.isLocked = false,
     this.selectedOption,
+    this.hasShownDialog = false
   });
 
   factory Quiz.fromJson(Map<String, dynamic> json) {

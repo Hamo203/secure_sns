@@ -201,7 +201,7 @@ class _EmotiondiaryState extends State<Emotiondiary> {
             width: screenWidth * 0.8,
             height: screenHeight * 0.45,
             child: Image.asset(
-              'images/diaryimage.jpg',
+              'images/diaryimage.png',
               fit: BoxFit.contain,
             ),
           ),
