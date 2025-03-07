@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:secure_sns/FirestoreSave.dart';
 import 'package:secure_sns/view/account/accountpage.dart';
 import 'package:secure_sns/view/account/user_auth.dart';
+import 'package:secure_sns/view/games/choiceGame.dart';
 import 'package:secure_sns/view/games/questiongame.dart';
 import 'package:secure_sns/view/talk/chatroom.dart';
 import 'package:secure_sns/view/timeline/postpage.dart';
@@ -30,12 +31,13 @@ class _NavigationState extends State<Navigation> {
     //Personalページはuseridがログイン者になるように指定する
     auth = userAuth.currentUser!.uid;
     pagelist = [
-      //Timeline(),
-      Emotiondiary(),
+      //Emotiondiary(),
+      Timeline(),
       Postpage(),
       Accountpage(userid: auth),
       Chatroom(),
-      QuizScreen()
+      //QuizScreen()
+      Choicegame()
     ];
   }
 
@@ -49,13 +51,18 @@ class _NavigationState extends State<Navigation> {
         backgroundColor: Colors.blueAccent,
         items: [
           CurvedNavigationBarItem(
+            child: Icon(Icons.home),
+            label: 'タイムライン',
+          ),
+          /*CurvedNavigationBarItem(
             child: Icon(Icons.note_alt),
             label: 'にっき',
-          ),
+          ),*/
           CurvedNavigationBarItem(
             child: Icon(Icons.chat_bubble_outline),
             label: 'とうこう',
           ),
+
           CurvedNavigationBarItem(
             child: Icon(Icons.perm_identity),
             label: 'マイページ',
