@@ -501,16 +501,27 @@ class ResultPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Icon(
+                Icons.star,
+                color: Colors.amber,
+                size: 80, // 星アイコンで成功感を演出
+              ),
+              SizedBox(height: 20),
               Text(
-                'あなたのスコアは $score/$total です！',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                '$total問中… $score問 正解！',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.pinkAccent, // 明るいピンク色
+                  fontFamily: 'MochiyPopOne', // 可愛いフォント（追加する場合）
+                ),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => Navigation()),
+                    MaterialPageRoute(builder: (_) => QuizScreen()),
                   );
                 },
                 child: const Text('最初に戻る'),
