@@ -14,6 +14,7 @@ import '../../api/api_service.dart';
 import '../../api/natural_language_service.dart';
 import '../../services/image_service.dart';
 import '../../services/offencive_classfier.dart';
+import '../components/offencivewordsList.dart';
 import '../feedback/nvc_feedback_page.dart';
 
 class FirestoreChatPage extends StatefulWidget {
@@ -56,6 +57,19 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
     apiService = ApiService(baseUrl: dotenv.env['BASE_URL']!);
     imageService = ImageService(); // ImageServiceを初期化
   }
+
+  bool containsOffensiveWord(String text) {
+    //、大文字・小文字の違いを無視
+    String lowerText = text.toLowerCase();
+    for (String word in offensiveWordList) {
+      if (lowerText.contains(word)) {
+        print("攻撃的な言葉を含む");
+        return true;
+      }
+    }
+    return false;
+  }
+
 
   @override
   void didChangeDependencies() {
@@ -115,8 +129,9 @@ class _FirestoreChatPageState extends State<FirestoreChatPage> {
 
     // 攻撃性の分析
     bool isSafe = await _analyzeText(message.text);
+    bool hasOffensiveWord = containsOffensiveWord(message.text);
 
-    if (!isSafe) {
+    if (!isSafe|| hasOffensiveWord) {
       print("攻撃性またはグレーゾーンが高い フィードバックを実行");
 
       bool feedbackResult = await _showNVCFeedBack(message.text,nonOffensivePercentage,offensivePercentage,grayZonePercentage);
