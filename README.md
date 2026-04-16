@@ -2,17 +2,24 @@
 
 SecHack365 2024年度　社会実装ゼミで開発したSNSアプリです。
 
-Palce は、NVC（非暴力コミュニケーション）に着目してテキストコミュニケーションを学ぶSNSライクな学習用アプリです。テキストコミュニケーションでは、意図が誤解されやすく、特にSNSでは軽率な発言がトラブルを招くこともあります。Palceの『SNS機能』では、強い表現を検知すると、“ニーズ”や“感情”を適切に伝えられるような言い換えを選択できます。さらに、『感情日記』や『クイズ』機能により、気持ちを表す言葉や相手に寄り添う語彙を楽しく学べます。ユーザに相手の感じ方や言葉選びを考える習慣を育み、心の余裕を持たせることで、心理的に安全なテキストコミュニケーション環境を提供します。
+Palce は、NVC（非暴力コミュニケーション）に着目してテキストコミュニケーションを学ぶSNSライクな学習用アプリです。
+テキストコミュニケーションでは、意図が誤解されやすく、特にSNSでは軽率な発言がトラブルを招くこともあります。
+そのため、本アプリは小学生を対象に、適切なコミュニケーション手法をクイズなどの学習機能や、チャット・タイムライン等のSNS機能を搭載しました。
 
-## Getting Started
+Palceの『SNS機能』では、強い表現を検知すると、“ニーズ”や“感情”を適切に伝えられるような言い換えを選択することができます。これにより、話者に自らの発言について考える機会を創造します。
+さらに、『感情日記』機能を用いて感情ベースで日記を書くことで自分の気持ちを振り返ったり、『クイズ』機能により気持ちを表す言葉や相手に寄り添う語彙を楽しく学ぶことができます。
+ユーザに相手の感じ方や言葉選びを考える習慣を育み、心の余裕を持たせることで、心理的に安全なテキストコミュニケーション環境を提供します。
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
+攻撃判定モデル:
+SNSテキストのデータセットでfine-tuning済みのluke-japanese-base-lite-offensiveness-estimationを使用
+例）
+入力：「黙ってろ。」
+出力：攻撃的でない: 6.6%/グレーゾーン: 0.0%/攻撃的: 93.4%
+入力：「そのくらいで悩むなんて、贅沢だね。」
+出力：攻撃的でない: 35.1%/グレーゾーン: 62.8%/攻撃的: 2.1%
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+グレーゾーン高め：間接的なストレス表現, 攻撃的高め：直接的な攻撃表現 として、攻撃性判定の手がかりとする
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+
+
